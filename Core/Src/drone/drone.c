@@ -24,7 +24,10 @@ void droneInit()
     motors_queue = xQueueCreate((UBaseType_t) 10,
                                 (UBaseType_t) sizeof(motorsMessage_t));
 
+    //initialize hardware
+    HAL_TIM_Base_Start(&htim7);
+
     //initialize modules
-    imu_init(imu_queue, &hi2c1);
+    imu_init(imu_queue, &hi2c1, NULL);
     motors_init(motors_queue, &htim2);
 }

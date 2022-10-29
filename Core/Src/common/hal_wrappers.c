@@ -42,3 +42,8 @@ HAL_StatusTypeDef WrapperRTOS_i2cMemWrite(I2C_HandleTypeDef *hi2c, uint16_t DevA
     }
     return status;
 }
+
+uint32_t WrapperRTOS_read_t_us(TIM_HandleTypeDef *htim)
+{
+    return htim->Instance->CNT;
+}

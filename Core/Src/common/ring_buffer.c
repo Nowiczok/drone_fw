@@ -86,9 +86,9 @@ bool ring_buffer_push (ring_buffer * ring_buffer, float sample)
             ring_buffer->len++;
             if (ring_buffer->head <
                 (ring_buffer->data_buffer +
-                 (ring_buffer->cap - 1) * sizeof (char)))
+                 (ring_buffer->cap - 1) * sizeof (float)))
             {
-                ring_buffer->head += sizeof (char);
+                ring_buffer->head += sizeof (float);
             }
             else
             {
@@ -100,22 +100,22 @@ bool ring_buffer_push (ring_buffer * ring_buffer, float sample)
     return false;
 }
 
-bool ring_buffer_pull (ring_buffer * ring_buffer, char *c)
+bool ring_buffer_pull (ring_buffer * ring_buffer, float *sample)
 {
     assert (ring_buffer);
-    assert (c);
+    assert (sample);
 
-    if ((ring_buffer) && (c))
+    if ((ring_buffer) && (sample))
     {
-        if (!ring_buffer_IsEmpty (ring_buffer))
+        if (!ring_buffer_is_empty(ring_buffer))
         {
-            *c = *ring_buffer->tail;
+            *sample = *ring_buffer->tail;
             ring_buffer->len--;
             if (ring_buffer->tail <
                 (ring_buffer->data_buffer +
-                 (ring_buffer->cap - 1) * sizeof (char)))
+                 (ring_buffer->cap - 1) * sizeof (float)))
             {
-                ring_buffer->tail += sizeof (char);
+                ring_buffer->tail += sizeof (float);
             }
             else
             {

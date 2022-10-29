@@ -49,9 +49,7 @@ else ()
     add_compile_options(-Og -g)
 endif ()
 
-include_directories(Core/Inc Drivers/STM32G4xx_HAL_Driver/Inc Drivers/STM32G4xx_HAL_Driver/Inc/Legacy
-        Drivers/CMSIS/Device/ST/STM32G4xx/Include Drivers/CMSIS/Include Core/Src/FreeRTOS/include
-        Core/Src/FreeRTOS/portable/GCC/ARM_CM4F Core/Src/imu Core/Src/drone Core/Src/motors Core/Src/common)
+include_directories(Core/Inc Drivers/STM32G4xx_HAL_Driver/Inc Drivers/STM32G4xx_HAL_Driver/Inc/Legacy Drivers/CMSIS/Device/ST/STM32G4xx/Include Drivers/CMSIS/Include Core/Src/FreeRTOS/include Core/Src/FreeRTOS/portable/GCC/ARM_CM4F Core/Src/imu Core/Src/drone Core/Src/motors Core/Src/common)
 
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32G441xx)
 

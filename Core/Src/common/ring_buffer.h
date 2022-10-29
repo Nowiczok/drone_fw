@@ -13,8 +13,8 @@
 typedef struct {
     float* data_buffer;
     size_t cap;
-    char* head;
-    char* tail;
+    float* head;
+    float* tail;
     size_t len;
 } ring_buffer;
 
@@ -77,6 +77,6 @@ bool ring_buffer_push(ring_buffer *ring_buffer, float sample);
  * @param ring_buffer pointer to a \ref ring_buffer structure
  * @return true if the character was pulled out successfully, false otherwise
 */
-bool ring_buffer_pull(ring_buffer *ring_buffer, char *c);
+bool ring_buffer_pull(ring_buffer *ring_buffer, float *sample);
 
 #endif //DRONE_CONTROLLER_FW_RING_BUFFER_H
