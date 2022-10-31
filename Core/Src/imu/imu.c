@@ -3,7 +3,7 @@
 //
 #include "imu.h"
 #include "mpu6050.h"
-#include "../common/hal_wrappers.h"
+#include "hal_wrappers.h"
 #include "ring_buffer.h"
 
 #include "FreeRTOS.h"
@@ -27,17 +27,14 @@ static TaskHandle_t imu_taskHandle;
 QueueHandle_t output_queue_local;  // reference to a handle created by app
 
 static I2C_HandleTypeDef* i2c_handle_ptr;  // reference to i2c handel, passed by app
-static TIM_HandleTypeDef* us_meas_handle_tim_ptr;
 
 //private functions
 void imu_task(void* parameters);
 bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_params);
-int32_t calculate_delta_t(int32_t curr, int32_t prev);
 
-bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c, TIM_HandleTypeDef *htim_us)
+bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
 {
     i2c_handle_ptr = hi2c;
-    us_meas_handle_tim_ptr = htim_us;
     output_queue_local = output_queue;
     bool task_creation_res;
     task_creation_res = xTaskCreate(imu_task,
@@ -54,9 +51,9 @@ void imu_task(void* parameters)
     MPU6050_Init(i2c_handle_ptr);
     ring_buffer_init(&buffer_yaw, yaw_buffer_mem, YAW_BUFFER_CAP);
 
+    float alt = 0.0f;
+    float vel = 0.0f;
     imuMessage_t new_message;
-    accum_params_t accum_roll = {.accum = 0.0f, .chunking_progress = 0, .int_chunk = 0.0f, .chunk_size = ROLL_BUFFER_CHUNK_SIZE};
-    accum_params_t accum_pitch = {.accum = 0.0f, .chunking_progress = 0, .int_chunk = 0.0f, .chunk_size = PITCH_BUFFER_CHUNK_SIZE};
     accum_params_t accum_yaw = {.accum = 0.0f, .chunking_progress = 0, .int_chunk = 0.0f, .chunk_size = YAW_BUFFER_CHUNK_SIZE};
     uint32_t prev_tim_us = 0;
     uint32_t curr_tim_us = 0;
@@ -64,15 +61,21 @@ void imu_task(void* parameters)
 
     while(1)
     {
-        curr_tim_us = WrapperRTOS_read_t_us(us_meas_handle_tim_ptr);
-        delta_tim_s = calculate_delta_t(curr_tim_us, prev_tim_us) * 1.0E-6;
-        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);  // get 
-        calculate_accum(mpu6050_status.Gz * delta_tim_s, &buffer_yaw, &accum_yaw);
+        curr_tim_us = WrapperRTOS_read_t_us();
+        delta_tim_s = (float)(calculate_delta_t(curr_tim_us, prev_tim_us)) * 1.0E-6f;
+        prev_tim_us = curr_tim_us;
+
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);  // get data from accel and gyro
+        calculate_accum(mpu6050_status.Gz * delta_tim_s, &buffer_yaw, &accum_yaw);  // accumulate yaw value
 
         new_message.roll = mpu6050_status.estimated_roll;
         new_message.pitch = mpu6050_status.estimated_pitch;
 
         new_message.yaw_accum_angle = accum_yaw.accum;
+
+        alt = delta_tim_s*vel + (delta_tim_s*delta_tim_s)*(mpu6050_status.Az - Z_ACC_IDLE); //estimate altitude
+        vel = delta_tim_s*(mpu6050_status.Az - Z_ACC_IDLE);  // update velocity
+        new_message.alt = alt;
 
         xQueueSendToFront(output_queue_local, &new_message, 100);
         vTaskDelay(TASK_EX_PERIOD_MS);
@@ -100,16 +103,3 @@ bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_pa
     return result;
 }
 
-int32_t calculate_delta_t(int32_t curr, int32_t prev)
-{
-    int32_t delta;
-    if(curr >= prev)  // overflow detection
-    {
-        delta = curr - prev;
-    }else
-    {
-        delta = US_TIM_PERIOD - prev + curr;
-    }
-
-    return delta;
-}

@@ -20,32 +20,32 @@ typedef struct
     int16_t Accel_X_RAW;
     int16_t Accel_Y_RAW;
     int16_t Accel_Z_RAW;
-    double Ax;
-    double Ay;
-    double Az;
+    float Ax;
+    float Ay;
+    float Az;
 
     int16_t Gyro_X_RAW;
     int16_t Gyro_Y_RAW;
     int16_t Gyro_Z_RAW;
-    double Gx;
-    double Gy;
-    double Gz;
+    float Gx;
+    float Gy;
+    float Gz;
 
     float Temperature;
 
-    double estimated_roll;
-    double estimated_pitch;
+    float estimated_roll;
+    float estimated_pitch;
 } MPU6050_t;
 
 // Kalman structure
 typedef struct
 {
-    double Q_angle;
-    double Q_bias;
-    double R_measure;
-    double angle;
-    double bias;
-    double P[2][2];
+    float Q_angle;
+    float Q_bias;
+    float R_measure;
+    float angle;
+    float bias;
+    float P[2][2];
 } Kalman_t;
 
 uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx);

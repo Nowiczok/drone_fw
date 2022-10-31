@@ -7,7 +7,7 @@
 
 //struct used to control drone in hover mode, which means that it can move only up and down
 typedef struct{
-    float speed_z;
+    float alt;
 }command_hover_mode_t;
 
 #endif //DRONE_CONTROLLER_FW_COMMANDS_H

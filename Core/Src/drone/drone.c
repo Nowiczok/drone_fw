@@ -28,6 +28,6 @@ void droneInit()
     HAL_TIM_Base_Start(&htim7);
 
     //initialize modules
-    imu_init(imu_queue, &hi2c1, NULL);
+    imu_init(imu_queue, &hi2c1);
     motors_init(motors_queue, &htim2);
 }

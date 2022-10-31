@@ -4,8 +4,10 @@
 
 #include "hal_wrappers.h"
 #include "semphr.h"
+#include "tim.h"
 
 SemaphoreHandle_t i2c_mutex;
+SemaphoreHandle_t tim_mutex;
 
 QueueHandle_t imu_queue;
 QueueHandle_t motors_queue;
@@ -43,7 +45,27 @@ HAL_StatusTypeDef WrapperRTOS_i2cMemWrite(I2C_HandleTypeDef *hi2c, uint16_t DevA
     return status;
 }
 
-uint32_t WrapperRTOS_read_t_us(TIM_HandleTypeDef *htim)
+uint32_t WrapperRTOS_read_t_us()
 {
-    return htim->Instance->CNT;
+    uint32_t time_us = 0;
+    if(xSemaphoreTake(i2c_mutex, (TickType_t)100) == pdTRUE) // use timer only if none other task uses it
+    {
+        time_us =  htim7.Instance->CNT;
+        xSemaphoreGive(i2c_mutex);
+    }
+    return time_us;
+}
+
+uint32_t calculate_delta_t(uint32_t curr, uint32_t prev)
+{
+    uint32_t delta;
+    if(curr >= prev)  // overflow detection
+    {
+        delta = curr - prev;
+    }else
+    {
+        delta = US_TIM_PERIOD - prev + curr;
+    }
+
+    return delta;
 }
