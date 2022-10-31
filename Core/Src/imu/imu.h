@@ -21,17 +21,10 @@
 #define YAW_BUFFER_CHUNK_SIZE 5
 
 typedef struct {
-    float roll_speed_meas;  // raw readings from gyro
-    float pith_speed_meas;
-    float yaw_speed_meas;
-
-    float roll_accum_angle;  // integrated angular speeds over fixed period of time
-    float pitch_accum_angle;
-    float yaw_accum_angle;
-
-    float acc_x;  // raw accelerometer readings
-    float acc_y;
-    float acc_z;
+    float roll;  // values filtered by Kalman filter
+    float pitch;  // values filtered by Kalman filter
+    float yaw_accum_angle;  // integrated angular speeds over fixed period of time
+    float alt;
 } imuMessage_t;
 
 bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c, TIM_HandleTypeDef *htim_us);

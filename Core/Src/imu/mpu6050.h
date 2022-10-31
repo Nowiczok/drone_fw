@@ -33,8 +33,8 @@ typedef struct
 
     float Temperature;
 
-    double KalmanAngleX;
-    double KalmanAngleY;
+    double estimated_roll;
+    double estimated_pitch;
 } MPU6050_t;
 
 // Kalman structure
@@ -56,6 +56,6 @@ void MPU6050_Read_Gyro(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
 
 void MPU6050_Read_Temp(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
 
-void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
+void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct, float delta_t_s);
 
 double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double dt);

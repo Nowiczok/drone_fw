@@ -20,11 +20,7 @@ typedef struct{
 
 static MPU6050_t mpu6050_status;
 
-static ring_buffer buffer_roll;
-static ring_buffer buffer_pitch;
 static ring_buffer buffer_yaw;  // ring buffers that are used to implement accumulation
-static float roll_buffer_mem[ROLL_BUFFER_CAP] = {0};
-static float pitch_buffer_mem[PITCH_BUFFER_CAP] = {0};
 static float yaw_buffer_mem[YAW_BUFFER_CAP] = {0};
 
 static TaskHandle_t imu_taskHandle;
@@ -56,40 +52,29 @@ bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c, TIM_HandleTyp
 void imu_task(void* parameters)
 {
     MPU6050_Init(i2c_handle_ptr);
-    ring_buffer_init(&buffer_roll, roll_buffer_mem, ROLL_BUFFER_CAP);
-    ring_buffer_init(&buffer_pitch, pitch_buffer_mem, PITCH_BUFFER_CAP);
     ring_buffer_init(&buffer_yaw, yaw_buffer_mem, YAW_BUFFER_CAP);
 
-    imuMessage_t newMessage;
+    imuMessage_t new_message;
     accum_params_t accum_roll = {.accum = 0.0f, .chunking_progress = 0, .int_chunk = 0.0f, .chunk_size = ROLL_BUFFER_CHUNK_SIZE};
     accum_params_t accum_pitch = {.accum = 0.0f, .chunking_progress = 0, .int_chunk = 0.0f, .chunk_size = PITCH_BUFFER_CHUNK_SIZE};
     accum_params_t accum_yaw = {.accum = 0.0f, .chunking_progress = 0, .int_chunk = 0.0f, .chunk_size = YAW_BUFFER_CHUNK_SIZE};
     uint32_t prev_tim_us = 0;
     uint32_t curr_tim_us = 0;
-    uint32_t delta_tim_s = 0;
+    float delta_tim_s = 0.0f;
 
     while(1)
     {
         curr_tim_us = WrapperRTOS_read_t_us(us_meas_handle_tim_ptr);
         delta_tim_s = calculate_delta_t(curr_tim_us, prev_tim_us) * 1.0E-6;
-        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status);
-        calculate_accum(mpu6050_status.Gx * delta_tim_s, &buffer_roll, &accum_roll);
-        calculate_accum(mpu6050_status.Gy * delta_tim_s, &buffer_pitch, &accum_pitch);
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);  // get 
         calculate_accum(mpu6050_status.Gz * delta_tim_s, &buffer_yaw, &accum_yaw);
 
-        newMessage.pith_speed_meas = (float)mpu6050_status.Gx;
-        newMessage.pith_speed_meas = (float)mpu6050_status.Gy;
-        newMessage.yaw_speed_meas = (float)mpu6050_status.Gz;
+        new_message.roll = mpu6050_status.estimated_roll;
+        new_message.pitch = mpu6050_status.estimated_pitch;
 
-        newMessage.acc_x = (float)mpu6050_status.Ax;
-        newMessage.acc_y = (float)mpu6050_status.Ay;
-        newMessage.acc_z = (float)mpu6050_status.Az;
+        new_message.yaw_accum_angle = accum_yaw.accum;
 
-        newMessage.roll_accum_angle = accum_roll.accum;
-        newMessage.pitch_accum_angle = accum_pitch.accum;
-        newMessage.yaw_accum_angle = accum_yaw.accum;
-
-        xQueueSendToFront(output_queue_local, &newMessage, 100);
+        xQueueSendToFront(output_queue_local, &new_message, 100);
         vTaskDelay(TASK_EX_PERIOD_MS);
     }
 
