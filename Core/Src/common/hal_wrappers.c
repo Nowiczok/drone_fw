@@ -9,9 +9,6 @@
 SemaphoreHandle_t i2c_mutex;
 SemaphoreHandle_t tim_mutex;
 
-QueueHandle_t imu_queue;
-QueueHandle_t motors_queue;
-
 // wrappers on standard HAL i2c mem read/write functions, to make them more FreeRTOS friendly
 HAL_StatusTypeDef WrapperRTOS_i2cMemRead(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
                                         uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout)

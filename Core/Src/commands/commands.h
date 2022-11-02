@@ -17,7 +17,7 @@ typedef struct{
     float alt;
 }command_hover_mode_t;
 
-bool commands_init(QueueHandle_t output_queue, UART_HandleTypeDef* huart);
+bool commands_init(QueueHandle_t output_queue);
 
 // callback called in ISR!
 bool commands_callback(uint8_t received_byte);

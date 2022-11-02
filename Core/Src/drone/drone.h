@@ -15,6 +15,7 @@ extern SemaphoreHandle_t i2c_mutex;
 //queues
 extern QueueHandle_t imu_queue;
 extern QueueHandle_t motors_queue;
+extern QueueHandle_t commands_queue;
 
 void droneInit();
 

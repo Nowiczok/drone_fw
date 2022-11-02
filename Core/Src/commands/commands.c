@@ -13,7 +13,6 @@
 
 static QueueHandle_t output_queue_local;
 static QueueHandle_t input_queue;
-static UART_HandleTypeDef* handle_uart;
 static command_hover_mode_t command;
 
 typedef struct __attribute__((packed)) {
@@ -32,11 +31,10 @@ static uint8_t received_buffer[IBUS_FRAME_LEN];
 static uint8_t received_count = 0;
 static bool opening_byte_received = false;
 
-bool commands_init(QueueHandle_t output_queue, UART_HandleTypeDef* huart)
+bool commands_init(QueueHandle_t output_queue)
 {
     BaseType_t returned;
     output_queue_local = output_queue;
-    handle_uart = huart;
     input_queue = xQueueCreate(100, sizeof(iBus_frame_structure_t));
     returned = xTaskCreate(commands_task,
                            "commands_task",
