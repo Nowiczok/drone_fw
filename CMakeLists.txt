@@ -52,13 +52,13 @@ endif ()
 include_directories(Core/Inc Drivers/STM32G4xx_HAL_Driver/Inc Drivers/STM32G4xx_HAL_Driver/Inc/Legacy
         Drivers/CMSIS/Device/ST/STM32G4xx/Include Drivers/CMSIS/Include Core/Src/FreeRTOS/include
         Core/Src/FreeRTOS/portable/GCC/ARM_CM4F Core/Src/imu Core/Src/drone Core/Src/motors Core/Src/common
-        Core/Src/controller Core/Src/commands)
+        Core/Src/controller Core/Src/commands Core/Src/barometer Core/Src/magnetometer)
 
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32G441xx)
 
 file(GLOB_RECURSE SOURCES "Core/*.*" "Drivers/*.*")
 
-set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/STM32G441CBTX_FLASH.ld)
+set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/STM32G441CBTX_FLASH.ld Core/Src/barometer/bme68x.h Core/Src/barometer/bme68x_defs.h Core/Src/barometer/bme68x.c)
 
 add_link_options(-Wl,-gc-sections,--print-memory-usage,-Map=${PROJECT_BINARY_DIR}/${PROJECT_NAME}.map)
 add_link_options(-mcpu=cortex-m4 -mthumb -mthumb-interwork)

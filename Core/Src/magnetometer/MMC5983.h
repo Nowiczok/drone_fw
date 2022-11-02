@@ -1,0 +1,8 @@
+//
+// Created by Michał on 02.11.2022.
+//
+
+#ifndef DRONE_CONTROLLER_FW_MMC5983_H
+#define DRONE_CONTROLLER_FW_MMC5983_H
+
+#endif //DRONE_CONTROLLER_FW_MMC5983_H
