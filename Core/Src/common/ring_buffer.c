@@ -4,11 +4,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include <assert.h>
+#include <string.h>
 #include "ring_buffer.h"
 
 
-bool ring_buffer_init (ring_buffer * ring_buffer, float *data_buffer,
-                       size_t data_buffer_size)
+bool ring_buffer_init(ring_buffer *ring_buffer, void *data_buffer, size_t data_buffer_size, size_t element_size)
 {
     assert (ring_buffer);
     assert (data_buffer);
@@ -17,10 +17,11 @@ bool ring_buffer_init (ring_buffer * ring_buffer, float *data_buffer,
     if ((ring_buffer) && (data_buffer) && (data_buffer_size > 0))
     {
         ring_buffer->data_buffer = data_buffer;
-        ring_buffer->cap = data_buffer_size;
+        ring_buffer->cap = data_buffer_size * element_size;
         ring_buffer->head = data_buffer;
         ring_buffer->tail = data_buffer;
         ring_buffer->len = 0;
+        ring_buffer->element_size = element_size;
         return true;
     }
 
@@ -68,13 +69,13 @@ size_t ring_buffer_get_capacity (const ring_buffer * ring_buffer)
 
     if (ring_buffer)
     {
-        return ring_buffer->cap;
+        return ring_buffer->cap/ring_buffer->element_size;
     }
     return 0;
 }
 
 
-bool ring_buffer_push (ring_buffer * ring_buffer, float sample)
+bool ring_buffer_push (ring_buffer *ring_buffer, void *sample)
 {
     assert (ring_buffer);
 
@@ -82,13 +83,12 @@ bool ring_buffer_push (ring_buffer * ring_buffer, float sample)
     {
         if (ring_buffer->len < ring_buffer->cap)
         {
-            *ring_buffer->head = sample;
+            memcpy(ring_buffer->head, sample, ring_buffer->element_size);
             ring_buffer->len++;
             if (ring_buffer->head <
-                (ring_buffer->data_buffer +
-                 (ring_buffer->cap - 1) * sizeof (float)))
+                (ring_buffer->data_buffer + ring_buffer->cap - ring_buffer->element_size))
             {
-                ring_buffer->head += sizeof (float);
+                ring_buffer->head += ring_buffer->element_size;
             }
             else
             {
@@ -100,7 +100,7 @@ bool ring_buffer_push (ring_buffer * ring_buffer, float sample)
     return false;
 }
 
-bool ring_buffer_pull (ring_buffer * ring_buffer, float *sample)
+bool ring_buffer_pull (ring_buffer * ring_buffer, void *sample)
 {
     assert (ring_buffer);
     assert (sample);
@@ -109,13 +109,12 @@ bool ring_buffer_pull (ring_buffer * ring_buffer, float *sample)
     {
         if (!ring_buffer_is_empty(ring_buffer))
         {
-            *sample = *ring_buffer->tail;
+            memcpy(sample, ring_buffer->tail, ring_buffer->element_size);
             ring_buffer->len--;
             if (ring_buffer->tail <
-                (ring_buffer->data_buffer +
-                 (ring_buffer->cap - 1) * sizeof (float)))
+                (ring_buffer->data_buffer + ring_buffer->cap - ring_buffer->element_size))
             {
-                ring_buffer->tail += sizeof (float);
+                ring_buffer->tail += ring_buffer->element_size;
             }
             else
             {

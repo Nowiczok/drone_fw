@@ -56,8 +56,8 @@ void controller_task(void* params)
         delta_tim_s = (float)(calculate_delta_t(curr_tim_us, prev_tim_us)) * 1.0E-6f;
         prev_tim_us = curr_tim_us;
 
-        xQueueReceive(commands_queue_local, &command, 100);
-        xQueueReceive(imu_queue_local, &imu_message, 100);
+        xQueueReceive(commands_queue_local, &command, 1);
+        xQueueReceive(imu_queue_local, &imu_message, 10);
 
         motors_message.rollSpeed = pid(&pid_roll, delta_tim_s, imu_message.roll, 0);
         motors_message.pitchSpeed = pid(&pid_pitch, delta_tim_s, imu_message.pitch, 0);

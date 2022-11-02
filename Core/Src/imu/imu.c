@@ -24,7 +24,7 @@ static ring_buffer buffer_yaw;  // ring buffers that are used to implement accum
 static float yaw_buffer_mem[YAW_BUFFER_CAP] = {0};
 
 static TaskHandle_t imu_taskHandle;
-QueueHandle_t output_queue_local;  // reference to a handle created by app
+static QueueHandle_t output_queue_local;  // reference to a handle created by app
 
 static I2C_HandleTypeDef* i2c_handle_ptr;  // reference to i2c handel, passed by app
 
@@ -49,7 +49,7 @@ bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
 void imu_task(void* parameters)
 {
     MPU6050_Init(i2c_handle_ptr);
-    ring_buffer_init(&buffer_yaw, yaw_buffer_mem, YAW_BUFFER_CAP);
+    ring_buffer_init(&buffer_yaw, yaw_buffer_mem, YAW_BUFFER_CAP, sizeof(float));
 
     float alt = 0.0f;
     float vel = 0.0f;
@@ -94,7 +94,7 @@ bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_pa
         if(accum_params->chunking_progress >= accum_params->chunk_size)
         {
             accum_params->chunking_progress = 0;
-            ring_buffer_push(buffer, accum_params->int_chunk);
+            ring_buffer_push(buffer, &accum_params->int_chunk);
         }
         ring_buffer_pull(buffer, &chunk_to_delete);
         accum_params->accum += accum_params->int_chunk - chunk_to_delete;

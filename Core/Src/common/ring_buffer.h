@@ -11,11 +11,12 @@
 
 /** Structure describing the ring buffer. */
 typedef struct {
-    float* data_buffer;
+    void* data_buffer;
     size_t cap;
-    float* head;
-    float* tail;
+    void* head;
+    void* tail;
     size_t len;
+    size_t element_size;
 } ring_buffer;
 
 
@@ -27,7 +28,7 @@ typedef struct {
  * @param data_buffer_size size in bytes of the data_buffer
  * @return true if all arguments are valid and the ring buffer is initialized successfully, false otherwise
 */
-bool ring_buffer_init(ring_buffer *ring_buffer, float *data_buffer, size_t data_buffer_size);
+bool ring_buffer_init(ring_buffer *ring_buffer, void *data_buffer, size_t data_buffer_size, size_t element_size);
 
 /**
  * Clears contents of the given ring buffer.
@@ -68,7 +69,7 @@ size_t ring_buffer_get_capacity(const ring_buffer *ring_buffer);
  * @param ring_buffer pointer to a \ref ring_buffer structure
  * @return true if the character was added successfully, false otherwise
 */
-bool ring_buffer_push(ring_buffer *ring_buffer, float sample);
+bool ring_buffer_push(ring_buffer *ring_buffer, void *sample);
 
 /**
  * Pulls out a single character from the ring buffer. The stored data length will be
@@ -77,6 +78,6 @@ bool ring_buffer_push(ring_buffer *ring_buffer, float sample);
  * @param ring_buffer pointer to a \ref ring_buffer structure
  * @return true if the character was pulled out successfully, false otherwise
 */
-bool ring_buffer_pull(ring_buffer *ring_buffer, float *sample);
+bool ring_buffer_pull(ring_buffer *ring_buffer, void *sample);
 
 #endif //DRONE_CONTROLLER_FW_RING_BUFFER_H
