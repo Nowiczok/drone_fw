@@ -16,7 +16,6 @@
 // MPU6050 structure
 typedef struct
 {
-
     int16_t Accel_X_RAW;
     int16_t Accel_Y_RAW;
     int16_t Accel_Z_RAW;
