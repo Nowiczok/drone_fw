@@ -7,7 +7,7 @@
 #include "pid.h"
 #include "commands.h"
 #include "motors.h"
-#include "imu.h"
+#include "sensor_fusion.h"
 #include "hal_wrappers.h"
 
 //private variables
@@ -38,7 +38,7 @@ void controller_task(void* params)
     uint32_t curr_tim_us = 0;
     float delta_tim_s = 0.0f;
     command_hover_mode_t command;
-    imuMessage_t imu_message;
+    fused_data_t imu_message;
     PidParam_t pid_roll;
     PidParam_t pid_pitch;
     PidParam_t pid_yaw;
@@ -61,7 +61,7 @@ void controller_task(void* params)
 
         motors_message.rollSpeed = pid(&pid_roll, delta_tim_s, imu_message.roll, 0);
         motors_message.pitchSpeed = pid(&pid_pitch, delta_tim_s, imu_message.pitch, 0);
-        motors_message.yawSpeed =  pid(&pid_yaw, delta_tim_s, imu_message.yaw_accum_angle, 0);
+        motors_message.yawSpeed =  pid(&pid_yaw, delta_tim_s, imu_message.yaw, 0);
         motors_message.throttle = pid(&pid_alt, delta_tim_s, imu_message.alt, command.alt);
 
         xQueueSendToFront(motors_queue_local, &motors_message, 100);

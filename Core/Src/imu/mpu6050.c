@@ -56,12 +56,12 @@ const double Accel_Z_corrector = 14418.0;
 
 uint32_t timer;
 
-Kalman_t KalmanX = {
+Kalman_angles_common_t KalmanX = {
     .Q_angle = 0.001f,
     .Q_bias = 0.003f,
     .R_measure = 0.03f};
 
-Kalman_t KalmanY = {
+Kalman_angles_common_t KalmanY = {
     .Q_angle = 0.001f,
     .Q_bias = 0.003f,
     .R_measure = 0.03f,
@@ -180,61 +180,6 @@ void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct, float delt
     DataStruct->Gx = DataStruct->Gyro_X_RAW / 131.0;
     DataStruct->Gy = DataStruct->Gyro_Y_RAW / 131.0;
     DataStruct->Gz = DataStruct->Gyro_Z_RAW / 131.0;
-
-    // Kalman angle solve
-    timer = HAL_GetTick();
-    double roll;
-    double roll_sqrt = sqrt(
-        DataStruct->Accel_X_RAW * DataStruct->Accel_X_RAW + DataStruct->Accel_Z_RAW * DataStruct->Accel_Z_RAW);
-    if (roll_sqrt != 0.0)
-    {
-        roll = atan(DataStruct->Accel_Y_RAW / roll_sqrt) * RAD_TO_DEG;
-    }
-    else
-    {
-        roll = 0.0;
-    }
-    double pitch = atan2(-DataStruct->Accel_X_RAW, DataStruct->Accel_Z_RAW) * RAD_TO_DEG;
-    if ((pitch < -90 && DataStruct->estimated_pitch > 90) || (pitch > 90 && DataStruct->estimated_pitch < -90))
-    {
-        KalmanY.angle = pitch;
-        DataStruct->estimated_pitch = pitch;
-    }
-    else
-    {
-        DataStruct->estimated_pitch = Kalman_getAngle(&KalmanY, pitch, DataStruct->Gy, delta_t_s);
-    }
-    if (fabs(DataStruct->estimated_pitch) > 90)
-        DataStruct->Gx = -DataStruct->Gx;
-    DataStruct->estimated_roll = Kalman_getAngle(&KalmanX, roll, DataStruct->Gx, delta_t_s);
 }
 
-double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double delta_t)
-{
-    double rate = newRate - Kalman->bias;
-    Kalman->angle += delta_t * rate;  // prediction of estimate
 
-    Kalman->P[0][0] += delta_t * (delta_t * Kalman->P[1][1] - Kalman->P[0][1] - Kalman->P[1][0] + Kalman->Q_angle);
-    Kalman->P[0][1] -= delta_t * Kalman->P[1][1];
-    Kalman->P[1][0] -= delta_t * Kalman->P[1][1];
-    Kalman->P[1][1] += Kalman->Q_bias * delta_t;  // prediction of estimate covariance
-
-    double S = Kalman->P[0][0] + Kalman->R_measure;
-    double K[2];
-    K[0] = Kalman->P[0][0] / S;
-    K[1] = Kalman->P[1][0] / S;  // Kalman gain vector computation
-
-    double y = newAngle - Kalman->angle;
-    Kalman->angle += K[0] * y;
-    Kalman->bias += K[1] * y;  // update state estimate
-
-    double P00_temp = Kalman->P[0][0];
-    double P01_temp = Kalman->P[0][1];
-
-    Kalman->P[0][0] -= K[0] * P00_temp;
-    Kalman->P[0][1] -= K[0] * P01_temp;
-    Kalman->P[1][0] -= K[1] * P00_temp;
-    Kalman->P[1][1] -= K[1] * P01_temp;  // update state covariance
-
-    return Kalman->angle;
-};

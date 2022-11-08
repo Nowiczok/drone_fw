@@ -19,6 +19,6 @@ typedef struct{
     float yawSpeed;
 } motorsMessage_t;
 
-void motors_init(QueueHandle_t input_queue, TIM_HandleTypeDef* htim);
+void motors_init(QueueHandle_t input_queue, QueueHandle_t output_queue, TIM_HandleTypeDef *htim);
 
 #endif //DRONE_CONTROLLER_FW_MOTORS_H

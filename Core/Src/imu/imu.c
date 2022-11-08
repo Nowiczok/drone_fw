@@ -36,14 +36,14 @@ bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
 {
     i2c_handle_ptr = hi2c;
     output_queue_local = output_queue;
-    bool task_creation_res;
+    BaseType_t task_creation_res;
     task_creation_res = xTaskCreate(imu_task,
                                      "imu_task",
                                      128,
                                      NULL,
                                      3,
                                      &imu_taskHandle);
-    return task_creation_res;
+    return task_creation_res == pdPASS;
 }
 
 void imu_task(void* parameters)
@@ -68,14 +68,13 @@ void imu_task(void* parameters)
         MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);  // get data from accel and gyro
         calculate_accum(mpu6050_status.Gz * delta_tim_s, &buffer_yaw, &accum_yaw);  // accumulate yaw value
 
-        new_message.roll = mpu6050_status.estimated_roll;
-        new_message.pitch = mpu6050_status.estimated_pitch;
+        new_message.acc_x = mpu6050_status.Ax;
+        new_message.acc_y = mpu6050_status.Ay;
+        new_message.acc_z = mpu6050_status.Az;
 
-        new_message.yaw_accum_angle = accum_yaw.accum;
-
-        alt = delta_tim_s*vel + (delta_tim_s*delta_tim_s)*(mpu6050_status.Az - Z_ACC_IDLE); //estimate altitude
-        vel = delta_tim_s*(mpu6050_status.Az - Z_ACC_IDLE);  // update velocity
-        new_message.alt = alt;
+        new_message.gyro_x = mpu6050_status.Gx;
+        new_message.gyro_x = mpu6050_status.Gy;
+        new_message.gyro_x = mpu6050_status.Gz;
 
         xQueueSendToFront(output_queue_local, &new_message, 100);
         vTaskDelay(TASK_EX_PERIOD_MS);

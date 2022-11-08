@@ -4,10 +4,13 @@
 #include "motors.h"
 
 xQueueHandle input_queue_local;
+xQueueHandle output_queue_local;
 TIM_HandleTypeDef* pwm_timer_handle_ptr;
 
 void motors_task(void* parameters);
 void control_motors(motorsMessage_t input_message);
+static float line_approximation(float x, const float *reference_x, const float *reference_y, uint8_t num_of_ref_pairs);
+static float pwm_torque_translation(float pwm, const float *reference_pwms, const float *reference_forces, uint8_t ref_num);
 
 // 1------------2
 //       |
@@ -15,10 +18,11 @@ void control_motors(motorsMessage_t input_message);
 //       |
 // 3------------4
 
-void motors_init(QueueHandle_t input_queue, TIM_HandleTypeDef* htim)
+void motors_init(QueueHandle_t input_queue, QueueHandle_t output_queue, TIM_HandleTypeDef *htim)
 {
     pwm_timer_handle_ptr = htim;
     input_queue_local = input_queue;
+    output_queue_local = output_queue;
     xTaskCreate(motors_task,
                 "motors_task",
                 128,
@@ -79,3 +83,20 @@ void control_motors(motorsMessage_t input_message)
     __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_1, pwm_vals[2]);
     __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_1, pwm_vals[3]);
 }
+
+static float line_approximation(float x, const float *reference_x, const float *reference_y, uint8_t num_of_ref_pairs)
+{
+    float force = 0.0f;
+    for(uint8_t i = 0; i < num_of_ref_pairs - 1; i++)
+    {
+        if(x > reference_x[i] || i == num_of_ref_pairs - 2)
+        {
+            float a = (reference_y[i + 1] - reference_y[i]) / (reference_x[i + 1] - reference_x[i]);
+            float b = reference_y[i] - a * reference_x[i];
+            force = a * x + b;  // approximation with linear function
+            break;
+        }
+    }
+    return force;
+}
+

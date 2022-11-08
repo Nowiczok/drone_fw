@@ -17,10 +17,13 @@
 #define Z_ACC_IDLE 9.81f
 
 typedef struct {
-    float roll;  // values filtered by Kalman filter
-    float pitch;  // values filtered by Kalman filter
-    float yaw_accum_angle;  // integrated angular speeds over fixed period of time
-    float alt;
+    float acc_x;
+    float acc_y;
+    float acc_z;
+
+    float gyro_x;
+    float gyro_y;
+    float gyro_z;
 } imuMessage_t;
 
 bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c);

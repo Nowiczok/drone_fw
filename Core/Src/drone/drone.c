@@ -43,7 +43,7 @@ void droneInit()
 
     //initialize modules
     imu_init(imu_queue, &hi2c1);
-    motors_init(motors_queue, &htim2);
+    motors_init(motors_queue, NULL, &htim2);
     commands_init(commands_queue);
     controller_init(imu_queue, motors_queue, commands_queue);
     barometer_init(altitude_queue, &hi2c1);
