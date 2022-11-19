@@ -3,8 +3,8 @@
 //
 #include "motors.h"
 
-xQueueHandle input_queue_local;
-xQueueHandle output_queue_local;
+static xQueueHandle input_queue_local;
+static xQueueHandle output_queue_local;
 TIM_HandleTypeDef* pwm_timer_handle_ptr;
 
 void motors_task(void* parameters);

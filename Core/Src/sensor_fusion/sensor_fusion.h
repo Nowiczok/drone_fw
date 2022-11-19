@@ -16,6 +16,7 @@ typedef struct{
     float alt;
 } fused_data_t;
 
-bool sensor_fusion_init(QueueHandle_t imu_queue, QueueHandle_t baro_queue, QueueHandle_t magnetometer_queue);
+bool sensor_fusion_init(QueueHandle_t imu_queue, QueueHandle_t baro_queue, QueueHandle_t magnetometer_queue,
+                        QueueHandle_t output_queue);
 
 #endif //DRONE_CONTROLLER_FW_SENSOR_FUSION_H
