@@ -63,7 +63,7 @@ bool sensor_fusion_init(QueueHandle_t imu_queue, QueueHandle_t baro_queue, Queue
     output_queue_local = output_queue;
     task_creation_res = xTaskCreate(sensor_fusion_task,
                                     "sens_fus_task",
-                                    128,
+                                    256,
                                     NULL,
                                     3,
                                     NULL);

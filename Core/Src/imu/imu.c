@@ -30,7 +30,8 @@ static I2C_HandleTypeDef* i2c_handle_ptr;  // reference to i2c handel, passed by
 
 //private functions
 void imu_task(void* parameters);
-bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_params);
+static bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_params);
+static void update_mean(float* mean, float new_sample, uint64_t* n);
 
 bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
 {
@@ -59,6 +60,12 @@ void imu_task(void* parameters)
     uint32_t curr_tim_us = 0;
     float delta_tim_s = 0.0f;
 
+    //debug only
+    float gyro_mean_x = 0.0f;
+    float gyro_mean_y = 0.0f;
+    float gyro_mean_z = 0.0f;
+    uint64_t iter_count = 0;
+
     while(1)
     {
         curr_tim_us = WrapperRTOS_read_t_us();
@@ -66,20 +73,34 @@ void imu_task(void* parameters)
         prev_tim_us = curr_tim_us;
 
         MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);  // get data from accel and gyro
-        calculate_accum(mpu6050_status.Gz * delta_tim_s, &buffer_yaw, &accum_yaw);  // accumulate yaw value
+        //calculate_accum(mpu6050_status.Gz * delta_tim_s, &buffer_yaw, &accum_yaw);  // accumulate yaw value
 
         new_message.acc_x = mpu6050_status.Ax;
         new_message.acc_y = mpu6050_status.Ay;
         new_message.acc_z = mpu6050_status.Az;
 
         new_message.gyro_x = mpu6050_status.Gx;
-        new_message.gyro_x = mpu6050_status.Gy;
-        new_message.gyro_x = mpu6050_status.Gz;
+        new_message.gyro_y = mpu6050_status.Gy;
+        new_message.gyro_z = mpu6050_status.Gz;
+
+        // averages needed to calculate bias error of gyro, not supposed to be in production code
+        update_mean(&gyro_mean_x, mpu6050_status.Gx, &iter_count);
+        update_mean(&gyro_mean_y, mpu6050_status.Gy, &iter_count);
+        update_mean(&gyro_mean_z, mpu6050_status.Gz, &iter_count);
 
         xQueueSendToFront(output_queue_local, &new_message, 100);
         vTaskDelay(TASK_EX_PERIOD_MS);
     }
 
+}
+
+void update_mean(float* mean, float new_sample, uint64_t* n)
+{
+    if(mean != NULL && n != NULL)
+    {
+        (*n)++;  // this guarantees non 0 value
+        *mean = *mean + (new_sample - *mean)/(float)(*n);
+    }
 }
 
 bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_params)

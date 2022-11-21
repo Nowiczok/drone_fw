@@ -1814,7 +1814,7 @@ UBaseType_t uxTaskGetSystemState( TaskStatus_t * const pxTaskStatusArray,
  * configuration section of the FreeRTOS.org website for more information.
  *
  * NOTE 1: This function will disable interrupts for its duration.  It is
- * not intended for normal application runtime use but as a debug aid.
+ * not intended for normal application runtime use but as a telemetry aid.
  *
  * Lists all the current tasks, along with their current state and stack
  * usage high water mark.
@@ -1869,7 +1869,7 @@ void vTaskList( char * pcWriteBuffer ) PRIVILEGED_FUNCTION; /*lint !e971 Unquali
  * the tick count.
  *
  * NOTE 1: This function will disable interrupts for its duration.  It is
- * not intended for normal application runtime use but as a debug aid.
+ * not intended for normal application runtime use but as a telemetry aid.
  *
  * Setting configGENERATE_RUN_TIME_STATS to 1 will result in a total
  * accumulated execution time being stored for each task.  The resolution
