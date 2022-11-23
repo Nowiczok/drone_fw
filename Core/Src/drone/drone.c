@@ -33,6 +33,7 @@ bool droneInit()
 {
     //create mutexes
     i2c_mutex = xSemaphoreCreateMutex();
+    tim_mutex = xSemaphoreCreateMutex();
 
     //create queues
     imu_queue = xQueueCreate((UBaseType_t) 10,
@@ -60,7 +61,7 @@ bool droneInit()
     vQueueAddToRegistry(mag_queue, "sf_q");
 
     //initialize hardware
-    HAL_TIM_Base_Start(&htim7);  // start us timer
+    HAL_TIM_Base_Start_IT(&htim7);  // start high resolution timer
 
     BaseType_t result_led;
     result_led = xTaskCreate(blink_task,
@@ -77,7 +78,7 @@ bool droneInit()
     //initialize modules
     bool res = false;
     imu_init(imu_queue, &hi2c1);
-    barometer_init(altitude_queue, &hi2c1);
+    //barometer_init(altitude_queue, &hi2c1);
     sensor_fusion_init(imu_queue, altitude_queue, mag_queue, sens_fus_queue);
     //magnetometer_init(mag_queue, &hi2c1);
     //motors_init(motors_queue, NULL, &htim2);
@@ -104,3 +105,4 @@ void blink_task(void* params)
         HAL_GPIO_TogglePin(USER_LED_GPIO_Port, USER_LED_Pin);
     }
 }
+

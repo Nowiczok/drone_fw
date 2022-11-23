@@ -160,7 +160,9 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+#define HIGH_RES_TIMER_PERIOD 65535
+volatile uint64_t high_res_time = 0;
+volatile uint32_t aux = 0;
 /* USER CODE END 4 */
 
 /**
@@ -175,6 +177,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
 
+  if(htim->Instance == TIM7)
+  {
+      high_res_time += HIGH_RES_TIMER_PERIOD;
+      aux = HAL_GetTick();
+  }
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM6) {
     HAL_IncTick();

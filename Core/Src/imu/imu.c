@@ -9,6 +9,11 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include <stdbool.h>
+#include <math.h>
+
+#define GYRO_BIAS_X 0.95f
+#define GYRO_BIAS_Y (-2.90f)
+#define GYRO_BIAS_Z (-0.93f)
 
 // this struct contains parameters needed to calculate moving accumulated value of angle
 typedef struct{
@@ -17,6 +22,22 @@ typedef struct{
     float int_chunk;
     uint8_t chunk_size;
 }accum_params_t;
+
+typedef struct{
+    float mean_acc_x;
+    float mean_acc_y;
+    float mean_acc_z;
+    float var_acc_x;
+    float var_acc_y;
+    float var_acc_z;
+
+    float mean_gyro_x;
+    float mean_gyro_y;
+    float mean_gyro_z;
+    float var_gyro_x;
+    float var_gyro_y;
+    float var_gyro_z;
+}imu_basic_calib_data_t;
 
 static MPU6050_t mpu6050_status;
 
@@ -31,7 +52,9 @@ static I2C_HandleTypeDef* i2c_handle_ptr;  // reference to i2c handel, passed by
 //private functions
 void imu_task(void* parameters);
 static bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_params);
-static void update_mean(float* mean, float new_sample, uint64_t* n);
+static void update_mean(float* mean, float new_sample, uint64_t n);
+static void update_variance(float* variance, float mean, float new_sample, uint64_t n);
+static void get_calib_data(imu_basic_calib_data_t* data);
 
 bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
 {
@@ -59,16 +82,14 @@ void imu_task(void* parameters)
     uint32_t prev_tim_us = 0;
     uint32_t curr_tim_us = 0;
     float delta_tim_s = 0.0f;
+    imu_basic_calib_data_t calib_data;
 
     //debug only
-    float gyro_mean_x = 0.0f;
-    float gyro_mean_y = 0.0f;
-    float gyro_mean_z = 0.0f;
-    uint64_t iter_count = 0;
+    //get_calib_data(&calib_data);
 
     while(1)
     {
-        curr_tim_us = WrapperRTOS_read_t_us();
+        curr_tim_us = WrapperRTOS_read_t_10us();
         delta_tim_s = (float)(calculate_delta_t(curr_tim_us, prev_tim_us)) * 1.0E-6f;
         prev_tim_us = curr_tim_us;
 
@@ -79,27 +100,66 @@ void imu_task(void* parameters)
         new_message.acc_y = mpu6050_status.Ay;
         new_message.acc_z = mpu6050_status.Az;
 
-        new_message.gyro_x = mpu6050_status.Gx;
-        new_message.gyro_y = mpu6050_status.Gy;
-        new_message.gyro_z = mpu6050_status.Gz;
-
-        // averages needed to calculate bias error of gyro, not supposed to be in production code
-        update_mean(&gyro_mean_x, mpu6050_status.Gx, &iter_count);
-        update_mean(&gyro_mean_y, mpu6050_status.Gy, &iter_count);
-        update_mean(&gyro_mean_z, mpu6050_status.Gz, &iter_count);
+        new_message.gyro_x = mpu6050_status.Gx - GYRO_BIAS_X;
+        new_message.gyro_y = mpu6050_status.Gy - GYRO_BIAS_Y;
+        new_message.gyro_z = mpu6050_status.Gz - GYRO_BIAS_Z;
 
         xQueueSendToFront(output_queue_local, &new_message, 100);
         vTaskDelay(TASK_EX_PERIOD_MS);
     }
-
 }
 
-void update_mean(float* mean, float new_sample, uint64_t* n)
+// helper procedure that calculates means and variances of gyro and accel, mean needed to compensate for bias error
+// and variance needed for Kalman filter operation
+void get_calib_data(imu_basic_calib_data_t* data)
 {
-    if(mean != NULL && n != NULL)
+    uint16_t num_of_samples = 5000;
+    for(uint16_t i = 1; i <= num_of_samples; i++)
     {
-        (*n)++;  // this guarantees non 0 value
-        *mean = *mean + (new_sample - *mean)/(float)(*n);
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, 0);
+        update_mean(&data->mean_acc_x, mpu6050_status.Ax, i);
+        update_mean(&data->mean_acc_y, mpu6050_status.Ay, i);
+        update_mean(&data->mean_acc_z, mpu6050_status.Az, i);
+    }
+
+    for(uint16_t i = 1; i <= num_of_samples; i++)
+    {
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, 0);
+        update_variance(&data->var_acc_x, data->mean_acc_x, mpu6050_status.Ax, i);
+        update_variance(&data->var_acc_y, data->mean_acc_y, mpu6050_status.Ay, i);
+        update_variance(&data->var_acc_z, data->mean_acc_z, mpu6050_status.Az, i);
+    }
+
+    for(uint16_t i = 1; i <= num_of_samples; i++)
+    {
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, 0);
+        update_mean(&data->mean_gyro_x, mpu6050_status.Gx, i);
+        update_mean(&data->mean_gyro_y, mpu6050_status.Gy, i);
+        update_mean(&data->mean_gyro_z, mpu6050_status.Gz, i);
+    }
+
+    for(uint16_t i = 1; i <= num_of_samples; i++)
+    {
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, 0);
+        update_variance(&data->var_gyro_x, data->mean_gyro_x, mpu6050_status.Gx, i);
+        update_variance(&data->var_gyro_y, data->mean_gyro_y, mpu6050_status.Gy, i);
+        update_variance(&data->var_gyro_z, data->mean_gyro_z, mpu6050_status.Gz, i);
+    }
+}
+
+void update_variance(float* variance, float mean, float new_sample, uint64_t n)
+{
+    update_mean(variance, powf(new_sample - mean, 2), n-1);
+}
+
+void update_mean(float* mean, float new_sample, uint64_t n)
+{
+    if(mean != NULL)
+    {
+        if(n != 0)
+            *mean = *mean + (new_sample - *mean)/(float)(n);
+        else
+            *mean += new_sample;
     }
 }
 

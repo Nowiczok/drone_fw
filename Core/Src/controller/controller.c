@@ -52,7 +52,7 @@ void controller_task(void* params)
 
     while(1)
     {
-        curr_tim_us = WrapperRTOS_read_t_us();
+        curr_tim_us = WrapperRTOS_read_t_10us();
         delta_tim_s = (float)(calculate_delta_t(curr_tim_us, prev_tim_us)) * 1.0E-6f;
         prev_tim_us = curr_tim_us;
 

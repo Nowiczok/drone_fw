@@ -41,16 +41,16 @@ HAL_StatusTypeDef WrapperRTOS_i2cMemWrite(I2C_HandleTypeDef *hi2c, uint16_t DevA
     }
     return status;
 }
-
-uint32_t WrapperRTOS_read_t_us()
+extern uint64_t high_res_time;
+uint32_t WrapperRTOS_read_t_10us()
 {
-    uint32_t time_us = 0;
-    if(xSemaphoreTake(i2c_mutex, (TickType_t)100) == pdTRUE) // use timer only if none other task uses it
+    uint32_t time_10us = 0;
+    if(xSemaphoreTake(tim_mutex, (TickType_t)100) == pdTRUE) // use timer only if none other task uses it
     {
-        time_us =  htim7.Instance->CNT;
-        xSemaphoreGive(i2c_mutex);
+        time_10us =  high_res_time + htim7.Instance->CNT;
+        xSemaphoreGive(tim_mutex);
     }
-    return time_us;
+    return time_10us;
 }
 
 uint32_t calculate_delta_t(uint32_t curr, uint32_t prev)

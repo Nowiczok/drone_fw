@@ -11,6 +11,7 @@
 #define MAIN_TASK_STACK_DEPTH 128
 //mutexes
 extern SemaphoreHandle_t i2c_mutex;
+extern SemaphoreHandle_t tim_mutex;
 
 //queues
 extern QueueHandle_t imu_queue;
