@@ -76,10 +76,10 @@ bool droneInit()
     }
 
     //initialize modules
-    bool res = false;
-    imu_init(imu_queue, &hi2c1);
-    //barometer_init(altitude_queue, &hi2c1);
-    sensor_fusion_init(imu_queue, altitude_queue, mag_queue, sens_fus_queue);
+    bool res = true;
+    //res &= imu_init(imu_queue, &hi2c1);
+    res &= barometer_init(altitude_queue, &hi2c1);
+    res &= sensor_fusion_init(imu_queue, altitude_queue, mag_queue, sens_fus_queue);
     //magnetometer_init(mag_queue, &hi2c1);
     //motors_init(motors_queue, NULL, &htim2);
     //commands_init(commands_queue);

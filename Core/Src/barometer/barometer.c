@@ -46,6 +46,7 @@ bool barometer_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
     return result == pdPASS;
 }
 
+volatile int dupa = 0;
 void barometer_task(void* params)
 {
     volatile int8_t rslt = BME280_OK;
@@ -85,7 +86,11 @@ void barometer_task(void* params)
         rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
         float temp_K = (float)comp_data.temperature + 273.0f;
         alt = calculate_altitude(REF_ALT, REF_PRESS, (float) comp_data.pressure, temp_K);
-        xQueueSendToFront(output_queue_local, &alt, 100);
+        BaseType_t rslt = xQueueSendToFront(output_queue_local, &alt, 100);
+        if(rslt == pdTRUE)
+        {
+            dupa++;
+        }
     }
 }
 

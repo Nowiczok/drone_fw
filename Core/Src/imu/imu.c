@@ -5,6 +5,7 @@
 #include "mpu6050.h"
 #include "hal_wrappers.h"
 #include "ring_buffer.h"
+#include "misc_utils.h"
 
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -52,8 +53,6 @@ static I2C_HandleTypeDef* i2c_handle_ptr;  // reference to i2c handel, passed by
 //private functions
 void imu_task(void* parameters);
 static bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_params);
-static void update_mean(float* mean, float new_sample, uint64_t n);
-static void update_variance(float* variance, float mean, float new_sample, uint64_t n);
 static void get_calib_data(imu_basic_calib_data_t* data);
 
 bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
@@ -144,22 +143,6 @@ void get_calib_data(imu_basic_calib_data_t* data)
         update_variance(&data->var_gyro_x, data->mean_gyro_x, mpu6050_status.Gx, i);
         update_variance(&data->var_gyro_y, data->mean_gyro_y, mpu6050_status.Gy, i);
         update_variance(&data->var_gyro_z, data->mean_gyro_z, mpu6050_status.Gz, i);
-    }
-}
-
-void update_variance(float* variance, float mean, float new_sample, uint64_t n)
-{
-    update_mean(variance, powf(new_sample - mean, 2), n-1);
-}
-
-void update_mean(float* mean, float new_sample, uint64_t n)
-{
-    if(mean != NULL)
-    {
-        if(n != 0)
-            *mean = *mean + (new_sample - *mean)/(float)(n);
-        else
-            *mean += new_sample;
     }
 }
 

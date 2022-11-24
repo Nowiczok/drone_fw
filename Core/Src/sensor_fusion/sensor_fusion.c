@@ -7,6 +7,7 @@
 #include "barometer.h"
 #include "linear_algebra.h"
 #include "hal_wrappers.h"
+#include "misc_utils.h"
 #include <math.h>
 #include <string.h>
 
@@ -74,8 +75,8 @@ void sensor_fusion_task(void* params)
 {
     imuMessage_t imu_data;
     float baro_alt;
-    kalman_angles_init(0.04f, 0.02f, 0.1f);
-    kalman_alt_init(0.04f, 0.02f, 0.1f);
+    kalman_angles_init(0.017f, 0.02f, 0.05f);
+    kalman_alt_init(0.017f, 0.02f, 0.05f);
     uint32_t prev_time = 0;
     uint32_t curr_time = 0;
     float delta_t_s = 0.0f;
@@ -98,6 +99,9 @@ void sensor_fusion_task(void* params)
     variable_part_pitch.P[1][0] = 0; variable_part_pitch.P[1][1] = 5.0f; variable_part_pitch.P[1][2] = 0;
     variable_part_pitch.P[2][0] = 0; variable_part_pitch.P[2][1] = 0; variable_part_pitch.P[2][2] = 5.0f;
 
+    sens_fus_var_t no_fus_var = {0};
+    sens_fus_var_t fus_var = {0};
+
     volatile uint32_t curr_time_ref = 0;
     volatile uint32_t prev_time_ref = 0;
     volatile float delta_time_ref = 0;
@@ -110,7 +114,7 @@ void sensor_fusion_task(void* params)
     {
         BaseType_t queue_rec_rslt = pdTRUE;
         queue_rec_rslt &= xQueueReceive(imu_queue_local, &imu_data, 10);
-        //queue_rec_rslt &= xQueueReceive(baro_queue_local, &baro_alt, 100);
+        queue_rec_rslt &= xQueueReceive(baro_queue_local, &baro_alt, 10);
         if(queue_rec_rslt == pdTRUE) // proceed only if sensors provided data
         {
             curr_time = WrapperRTOS_read_t_10us();
@@ -120,8 +124,8 @@ void sensor_fusion_task(void* params)
             prev_time = curr_time;
             prev_time_ref = curr_time_ref;
 
-            //!!!!!!!!!!!!!!!!!!!!!!!!!1
-            //delta_t_s = (float)delta_time_ref/1000;
+            //!!!!!!!!!!!!!!!!!!!!!!!!!
+            delta_t_s = (float)delta_time_ref;
 
             float roll = atan2f(imu_data.acc_y, imu_data.acc_z) * RAD_TO_DEG;
             float pitch = atan2f(imu_data.acc_x, imu_data.acc_z) * RAD_TO_DEG;
@@ -138,6 +142,8 @@ void sensor_fusion_task(void* params)
             output_data.pitch = variable_part_pitch.X[0][0];
             output_data.alt = 0;//variable_part_alt.X[0][0];
 
+            calculate_vars(&no_fus_var, roll, 10000);
+            calculate_vars(&fus_var, output_data.roll, 10000);
             //xQueueSendToFront(output_queue_local, &output_data, 100);
         }
     }
@@ -196,18 +202,18 @@ bool kalman_angles(float delta_t)
     comm_part_angles.F[1][2] = delta_t;
 
     // prepare Q matrix
-    float acc_std_dev = comm_part_angles.acc_var;
-    comm_part_angles.Q[0][0] = 0.25f * acc_std_dev * powf(delta_t, 4);
-    comm_part_angles.Q[0][1] = 0.5f * acc_std_dev * powf(delta_t, 3);
-    comm_part_angles.Q[0][2] = 0.5f * acc_std_dev * powf(delta_t, 2);
+    float acc_var = comm_part_angles.acc_var;
+    comm_part_angles.Q[0][0] = 0.25f * acc_var * powf(delta_t, 4);
+    comm_part_angles.Q[0][1] = 0.5f * acc_var * powf(delta_t, 3);
+    comm_part_angles.Q[0][2] = 0.5f * acc_var * powf(delta_t, 2);
 
-    comm_part_angles.Q[1][0] = 0.5f * acc_std_dev * powf(delta_t, 3);
-    comm_part_angles.Q[1][1] = acc_std_dev * powf(delta_t, 2);
-    comm_part_angles.Q[1][2] = acc_std_dev * delta_t;
+    comm_part_angles.Q[1][0] = 0.5f * acc_var * powf(delta_t, 3);
+    comm_part_angles.Q[1][1] = acc_var * powf(delta_t, 2);
+    comm_part_angles.Q[1][2] = acc_var * delta_t;
 
-    comm_part_angles.Q[2][0] = 0.5f * acc_std_dev * powf(delta_t, 2);
-    comm_part_angles.Q[2][1] = delta_t * acc_std_dev;
-    comm_part_angles.Q[2][2] = acc_std_dev;
+    comm_part_angles.Q[2][0] = 0.5f * acc_var * powf(delta_t, 2);
+    comm_part_angles.Q[2][1] = delta_t * acc_var;
+    comm_part_angles.Q[2][2] = acc_var;
 
     kalman_3D_alg(&comm_part_angles, &variable_part_roll);
     kalman_3D_alg(&comm_part_angles, &variable_part_pitch);
@@ -249,10 +255,13 @@ bool kalman_3D_alg(const Kalman_angles_common_t *comm_part, Kalman_angles_variab
         tran_const_in((float*)comm_part->F, (float*)F_t, 3, 3);
         // prediction of covariance
         float aux33[3][3];
+        float aux33_2[3][3];
         mul((float*)comm_part->F, (float*)var_part->P, false,  // F * X, stored in aux33
             (float*)aux33, 3, 3, 3);
         mul((float*)aux33, (float*)F_t, false,
-            (float*)var_part->P, 3, 3, 3);  // (F*X) * F_t, aux33 free
+            (float*)aux33_2, 3, 3, 3);  // (F*X) * F_t, aux33 free
+        add((float*)aux33_2, (float*)comm_part->Q, (float*)var_part->P,  //  (F*X*F_t) + Q
+            3, 3, 3);
 
         float H_t[3][2];
         tran_const_in((float*)comm_part->H, (float*)H_t, 2, 3);
@@ -286,7 +295,6 @@ bool kalman_3D_alg(const Kalman_angles_common_t *comm_part, Kalman_angles_variab
         // estimate uncertainty update
         float K_t[3][2];
         float aux23[2][3];
-        float aux33_2[3][3];
         float aux33_3[3][3];
         float aux33_4[3][3];
         float I[3][3] = {{1.0f, 0.0f, 0.0f},
@@ -312,4 +320,3 @@ bool kalman_3D_alg(const Kalman_angles_common_t *comm_part, Kalman_angles_variab
     }
     return result;
 }
-
