@@ -9,6 +9,7 @@
 #include "bme68x.h"
 #include "hal_wrappers.h"
 #include "i2c.h"
+#include "misc_utils.h"
 #include <math.h>
 
 #define REF_ALT          0.0f
@@ -46,17 +47,16 @@ bool barometer_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
     return result == pdPASS;
 }
 
-volatile int dupa = 0;
+volatile int8_t rslt = BME280_OK;
 void barometer_task(void* params)
 {
-    volatile int8_t rslt = BME280_OK;
+
     struct bme280_dev dev;
     uint8_t settings_sel = 0;
     uint32_t req_delay;
     struct bme280_data comp_data;
     float alt = 0.0f;
     float ref_press = 0.0f;
-    float ref_temp = 0.0f;
 
     // pass HW dependent functions
     dev.intf = BME280_I2C_INTF;
@@ -66,31 +66,24 @@ void barometer_task(void* params)
     dev.delay_us = bme280_delay_us;
     rslt = bme280_init(&dev);
 
-    /* Recommended mode of operation: Indoor navigation */
-    dev.settings.osr_h = BME280_OVERSAMPLING_1X;
-    dev.settings.osr_p = BME280_OVERSAMPLING_16X;
-    dev.settings.osr_t = BME280_OVERSAMPLING_2X;
-    dev.settings.filter = BME280_FILTER_COEFF_16;
-
-    settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
-
-    /* Set the sensor settings */
+    settings_sel = BME280_OSR_PRESS_SEL;
+    settings_sel |= BME280_OSR_TEMP_SEL;
+    settings_sel |= BME280_OSR_HUM_SEL;
+    settings_sel |= BME280_STANDBY_SEL;
+    settings_sel |= BME280_FILTER_SEL;
     rslt = bme280_set_sensor_settings(settings_sel, &dev);
+    rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
 
-    req_delay = bme280_cal_meas_delay(&dev.settings);
-
+    vTaskDelay(100);
+    rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
+    ref_press = comp_data.pressure;
     while(1)
     {
-        rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
-        dev.delay_us(req_delay, dev.intf_ptr);
+        dev.delay_us(1000, dev.intf_ptr);
         rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
         float temp_K = (float)comp_data.temperature + 273.0f;
-        alt = calculate_altitude(REF_ALT, REF_PRESS, (float) comp_data.pressure, temp_K);
+        alt = calculate_altitude(0.0f, ref_press, (float) comp_data.pressure, temp_K);
         BaseType_t rslt = xQueueSendToFront(output_queue_local, &alt, 100);
-        if(rslt == pdTRUE)
-        {
-            dupa++;
-        }
     }
 }
 
@@ -123,7 +116,8 @@ BME280_INTF_RET_TYPE bme280_i2c_write(uint8_t reg_addr, uint8_t *reg_data, uint3
 
 void bme280_delay_us(uint32_t period, void *intf_ptr)
 {
-    vTaskDelay(period/1000);  // this lib doesn't use resolution greater than 1 ms
+    float period_ms = ceilf((float)period/1000);
+    vTaskDelay( (TickType_t)period_ms);  // this lib doesn't use resolution greater than 1 ms
 }
 
 float calculate_altitude(float ref_alt, float ref_press, float press, float temp)

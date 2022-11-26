@@ -77,7 +77,7 @@ bool droneInit()
 
     //initialize modules
     bool res = true;
-    //res &= imu_init(imu_queue, &hi2c1);
+    res &= imu_init(imu_queue, &hi2c1);
     res &= barometer_init(altitude_queue, &hi2c1);
     res &= sensor_fusion_init(imu_queue, altitude_queue, mag_queue, sens_fus_queue);
     //magnetometer_init(mag_queue, &hi2c1);
