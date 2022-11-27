@@ -10,6 +10,6 @@
 #include "usart.h"
 #include <stdbool.h>
 
-bool telemetry_init(QueueHandle_t imu_queue, UART_HandleTypeDef *huart);
+bool telemetry_init(QueueHandle_t tel_queue, UART_HandleTypeDef *huart);
 
 #endif //DRONE_CONTROLLER_FW_TELEMETRY_H

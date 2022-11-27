@@ -12,7 +12,7 @@
 
 //private variables
 TaskHandle_t controller_task_handle;
-QueueHandle_t imu_queue_local;
+QueueHandle_t tel_queue_local;
 QueueHandle_t motors_queue_local;
 QueueHandle_t commands_queue_local;
 
@@ -21,7 +21,7 @@ void controller_task(void* params);
 
 bool controller_init(QueueHandle_t imu_queue, QueueHandle_t motors_queue, QueueHandle_t commands_queue)
 {
-    imu_queue_local = imu_queue;
+    tel_queue_local = imu_queue;
     motors_queue_local = motors_queue;
     commands_queue_local = commands_queue;
     xTaskCreate(controller_task,
@@ -57,7 +57,7 @@ void controller_task(void* params)
         prev_tim_us = curr_tim_us;
 
         xQueueReceive(commands_queue_local, &command, 1);
-        xQueueReceive(imu_queue_local, &imu_message, 10);
+        xQueueReceive(tel_queue_local, &imu_message, 10);
 
         motors_message.rollSpeed = pid(&pid_roll, delta_tim_s, imu_message.roll, 0);
         motors_message.pitchSpeed = pid(&pid_pitch, delta_tim_s, imu_message.pitch, 0);

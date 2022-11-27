@@ -9,6 +9,7 @@
 
 #include "i2c.h"
 #include "tim.h"
+#include "usart.h"
 
 #include "imu.h"
 #include "barometer.h"
@@ -18,6 +19,7 @@
 #include "commands.h"
 #include "controller.h"
 #include "drone.h"
+#include "telemetry.h"
 
 
 QueueHandle_t imu_queue;
@@ -80,6 +82,7 @@ bool droneInit()
     res &= imu_init(imu_queue, &hi2c1);
     res &= barometer_init(altitude_queue, &hi2c1);
     res &= sensor_fusion_init(imu_queue, altitude_queue, mag_queue, sens_fus_queue);
+    telemetry_init(sens_fus_queue, &huart3);
     //magnetometer_init(mag_queue, &hi2c1);
     //motors_init(motors_queue, NULL, &htim2);
     //commands_init(commands_queue);

@@ -112,7 +112,7 @@ void sensor_fusion_task(void* params)
             calculate_vars(&fus_var_alt, output_data.alt, 3000);
             calculate_vars(&no_fus_var_roll, roll, 3000);
             calculate_vars(&fus_var_roll, output_data.roll, 3000);
-            //xQueueSendToFront(output_queue_local, &output_data, 100);
+            xQueueSendToFront(output_queue_local, &output_data, 1);
         }
     }
 }
