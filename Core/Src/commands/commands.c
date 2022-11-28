@@ -8,7 +8,7 @@
 
 #define IBUS_CH_NUM 14
 #define COMMAND_CODE 0x40
-#define IBUS_FRAME_LEN (IBUS_CH_NUM*2 + 6)
+#define IBUS_FRAME_LEN (IBUS_CH_NUM*2 + 4)
 #define ALT_SCALING 1.0f
 
 static QueueHandle_t output_queue_local;
@@ -22,20 +22,26 @@ typedef struct __attribute__((packed)) {
     uint16_t checksum;
 } iBus_frame_structure_t;
 
-void commands_task(void* params);
-void check_frame_and_exe(iBus_frame_structure_t *frame);
-bool check_validness(iBus_frame_structure_t* frame);
-bool check_checksum(iBus_frame_structure_t* frame);
+union ibus_rec{
+    uint8_t bytes[IBUS_FRAME_LEN];
+    iBus_frame_structure_t fields;
+};
 
-static uint8_t received_buffer[IBUS_FRAME_LEN];
-static uint8_t received_count = 0;
-static bool opening_byte_received = false;
+typedef enum {
+    LEN,
+    CODE,
+    PAYLOAD,
+    CHECKSUM
+}ibus_rx_state_t;
+
+void commands_task(void* params);
+bool check_checksum(union ibus_rec* frame);
 
 bool commands_init(QueueHandle_t output_queue)
 {
     BaseType_t returned;
     output_queue_local = output_queue;
-    input_queue = xQueueCreate(100, sizeof(iBus_frame_structure_t));
+    input_queue = xQueueCreate(100, sizeof(union ibus_rec));
     returned = xTaskCreate(commands_task,
                            "commands_task",
                            128,
@@ -45,6 +51,7 @@ bool commands_init(QueueHandle_t output_queue)
     return returned == pdPASS;
 }
 
+union ibus_rec received_frame;
 void commands_task(void* params)
 {
     uint8_t data_buffer[FRAME_BUFF_LEN];
@@ -54,62 +61,94 @@ void commands_task(void* params)
 
     ring_buffer_init(&frame_buffer, data_buffer, FRAME_BUFF_LEN, sizeof(uint8_t));
 
+    command_hover_mode_t command;
+    BaseType_t rslt;
     while(1)
     {
         // pull received frame
-        xQueueReceive(input_queue, &data_buffer[index], 0);
-
+        rslt = xQueueReceive(input_queue, &received_frame, 200);
+        if(rslt == pdTRUE)
+        {
+            if (check_checksum(&received_frame)) {
+                command.alt = (float) received_frame.fields.payload[0] / 100.0f;
+                command.timeout = false;
+                xQueueSendToFront(output_queue_local, &command, 100);
+            }
+        }else{
+            // comm timeout handling
+            command.timeout = true;  // controller decides what to do with comm timeout
+            xQueueSendToFront(output_queue_local, &command, 100);
+        }
     }
 }
 
 // callback called in ISR!
+ibus_rx_state_t rx_state = LEN;
+union ibus_rec rx_buf;
+uint8_t payload_cnt = 0;
+bool checksum_lsb = true;
 bool commands_callback(uint8_t received_byte)
 {
     BaseType_t higher_priority_task_woken = pdFALSE;
-    if(!opening_byte_received && received_byte == IBUS_FRAME_LEN)
+    switch(rx_state)
     {
-        received_buffer[0] = received_byte;
-        opening_byte_received = true;
-        received_count = 1;
-    }else if(opening_byte_received) {
-        received_buffer[received_count] = received_byte;
-        received_count++;
-        if (received_count == IBUS_FRAME_LEN) {
-            opening_byte_received = false;
-            xQueueSendToFrontFromISR(input_queue, (iBus_frame_structure_t *) received_buffer,
-                                     &higher_priority_task_woken);
-        }
+        case LEN:
+            if(received_byte == IBUS_FRAME_LEN)
+            {
+                rx_buf.bytes[0] = received_byte;
+                rx_state = CODE;
+            }else{
+                rx_state = LEN;
+            }
+            break;
+        case CODE:
+            if(received_byte == COMMAND_CODE)
+            {
+                rx_buf.bytes[1] = received_byte;
+                rx_state = PAYLOAD;
+                payload_cnt = 0;
+            }else{
+                rx_state = LEN;
+            }
+            break;
+        case PAYLOAD:
+            if(payload_cnt <= IBUS_CH_NUM*2-2)
+            {
+                rx_buf.bytes[payload_cnt+2] = received_byte;
+                ++payload_cnt;
+                rx_state = PAYLOAD;
+            }else{
+                rx_buf.bytes[payload_cnt+2] = received_byte;
+                checksum_lsb = true;
+                rx_state = CHECKSUM;
+            }
+            break;
+        case CHECKSUM:
+            if(checksum_lsb)
+            {
+                rx_buf.bytes[IBUS_FRAME_LEN-2] = received_byte;
+                checksum_lsb = false;
+                rx_state = CHECKSUM;
+            }else{
+                rx_buf.bytes[IBUS_FRAME_LEN-1] = received_byte;
+                xQueueSendToFrontFromISR(input_queue, &rx_buf.fields,
+                                         &higher_priority_task_woken);
+                rx_state = LEN;
+            }
+            break;
+        default:
+            rx_state = LEN;
+            break;
     }
     return higher_priority_task_woken == pdTRUE;
 }
 
-void check_frame_and_exe(iBus_frame_structure_t *frame)
-{
-    if(check_validness(frame))
-    {
-        command_hover_mode_t command;
-        command.alt = (float) frame->payload[0] * ALT_SCALING;
-        xQueueSendToFront(output_queue_local, &command, 100);
-    }
-}
-
-bool check_validness(iBus_frame_structure_t* frame)
-{
-    return (frame->command_code == COMMAND_CODE) && check_checksum(frame);
-}
-
-bool check_checksum(iBus_frame_structure_t* frame)
+bool check_checksum(union ibus_rec* frame)
 {
     uint16_t checksum_calculated = 0xffff;
-
-    checksum_calculated -= frame->length;
-    checksum_calculated -= frame->command_code;
-    for(int i = 0; i < IBUS_CH_NUM; i++)
+    for(uint8_t i = 0; i < IBUS_FRAME_LEN-2; i++)
     {
-        checksum_calculated -= frame->payload[i] & 0x00ff;  // subtract lower byte
-        checksum_calculated -= frame->payload[i] >> 8;  // subtract higher byte
+        checksum_calculated -= frame->bytes[i];
     }
-
-    //TODO check byte ordering, it might be incorrect
-    return (checksum_calculated == frame->checksum);
+    return (checksum_calculated == frame->fields.checksum);
 }

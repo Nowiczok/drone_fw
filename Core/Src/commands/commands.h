@@ -15,6 +15,7 @@
 //struct used to control drone in hover mode, which means that it can move only up and down
 typedef struct{
     float alt;
+    bool timeout;
 }command_hover_mode_t;
 
 bool commands_init(QueueHandle_t output_queue);

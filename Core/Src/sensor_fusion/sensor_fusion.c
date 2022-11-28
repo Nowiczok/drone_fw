@@ -95,7 +95,7 @@ void sensor_fusion_task(void* params)
             float pitch = atan2f(imu_data.acc_x, imu_data.acc_z) * RAD_TO_DEG;
             // enter measurements
             variable_part_pitch.Z[0][0] = pitch;
-            variable_part_pitch.Z[1][0] = imu_data.gyro_y;  // TODO: check whether it really should be gyro_x
+            variable_part_pitch.Z[1][0] = -imu_data.gyro_y;  // TODO: check whether it really should be gyro_x
             variable_part_roll.Z[0][0] = roll;
             variable_part_roll.Z[1][0] = imu_data.gyro_x;  // TODO: check whether it really should be gyro_y
             variable_part_alt.Z = baro_alt;

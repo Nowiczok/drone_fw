@@ -23,7 +23,7 @@
 /* USER CODE BEGIN 0 */
 #include "commands.h"
 
-uint8_t uart2_rx_buff;
+uint8_t uart3_rx_buff;
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart2;
@@ -70,7 +70,7 @@ void MX_USART2_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART2_Init 2 */
-    HAL_UART_Receive_IT(&huart2, &uart2_rx_buff, sizeof(uint8_t));  // start data receiving
+    HAL_UART_Receive_IT(&huart2, &uart3_rx_buff, sizeof(uint8_t));  // start data receiving
   /* USER CODE END USART2_Init 2 */
 
 }
@@ -210,7 +210,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     __HAL_LINKDMA(uartHandle,hdmatx,hdma_usart3_tx);
 
     /* USART3 interrupt Init */
-    HAL_NVIC_SetPriority(USART3_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART3_IRQn, 15, 0);
     HAL_NVIC_EnableIRQ(USART3_IRQn);
   /* USER CODE BEGIN USART3_MspInit 1 */
 
@@ -270,10 +270,10 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if(huart == &huart2)
+    if(huart == &huart3)
     {
-        commands_callback(uart2_rx_buff);
-        HAL_UART_Receive_IT(huart, &uart2_rx_buff, sizeof(uint8_t));
+        commands_callback(uart3_rx_buff);
+        HAL_UART_Receive_IT(&huart3, &uart3_rx_buff, sizeof(uint8_t));
     }
 }
 

@@ -21,6 +21,7 @@
 #include "drone.h"
 #include "telemetry.h"
 
+extern uint8_t uart3_rx_buff;
 
 QueueHandle_t imu_queue;
 QueueHandle_t motors_queue;
@@ -64,6 +65,7 @@ bool droneInit()
 
     //initialize hardware
     HAL_TIM_Base_Start_IT(&htim7);  // start high resolution timer
+    HAL_UART_Receive_IT(&huart3, &uart3_rx_buff, sizeof(uint8_t));
 
     BaseType_t result_led;
     result_led = xTaskCreate(blink_task,
@@ -85,7 +87,7 @@ bool droneInit()
     telemetry_init(sens_fus_queue, &huart3);
     //magnetometer_init(mag_queue, &hi2c1);
     //motors_init(motors_queue, NULL, &htim2);
-    //commands_init(commands_queue);
+    commands_init(commands_queue);
     //controller_init(imu_queue, motors_queue, commands_queue);
 
     if(!res)
