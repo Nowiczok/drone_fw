@@ -55,7 +55,7 @@ void sensor_fusion_task(void* params)
     imuMessage_t imu_data;
     float baro_alt;
     kalman_angles_init(0.017f, 0.02f, 0.05f);
-    kalman_alt_init(0.017f, 0.02f, 0.05f);
+    kalman_alt_init(0.1f, 0.02f, 0.05f);
     uint32_t prev_time = 0;
     uint32_t curr_time = 0;
     float delta_t_s = 0.0f;
@@ -82,10 +82,11 @@ void sensor_fusion_task(void* params)
         if(queue_rec_rslt == pdTRUE) // proceed only if sensors provided data
         {
             curr_time = WrapperRTOS_read_t_10us();
-            curr_time_ref = HAL_GetTick();
             delta_t_s = (float)(curr_time - prev_time)/10e5f;
-            delta_time_ref = (float)(curr_time_ref - prev_time_ref)/1000.0f;
             prev_time = curr_time;
+
+            curr_time_ref = HAL_GetTick();
+            delta_time_ref = (float)(curr_time_ref - prev_time_ref)/1000.0f;
             prev_time_ref = curr_time_ref;
 
             //!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -93,6 +94,7 @@ void sensor_fusion_task(void* params)
 
             float roll = atan2f(imu_data.acc_y, imu_data.acc_z) * RAD_TO_DEG;
             float pitch = atan2f(imu_data.acc_x, imu_data.acc_z) * RAD_TO_DEG;
+            float yaw_accum = imu_data.yaw_accum;
             // enter measurements
             variable_part_pitch.Z[0][0] = pitch;
             variable_part_pitch.Z[1][0] = -imu_data.gyro_y;  // TODO: check whether it really should be gyro_x
@@ -105,6 +107,7 @@ void sensor_fusion_task(void* params)
             kalman_alt(delta_t_s);
             output_data.roll = variable_part_roll.X[0][0];
             output_data.pitch = variable_part_pitch.X[0][0];
+            output_data.yaw = yaw_accum;
             output_data.alt = variable_part_alt.X[0][0];
 
             calculate_vars(&var_acc, variable_part_alt.a, 3000);

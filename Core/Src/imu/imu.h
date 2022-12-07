@@ -24,6 +24,8 @@ typedef struct {
     float gyro_x;
     float gyro_y;
     float gyro_z;
+
+    float yaw_accum;
 } imuMessage_t;
 
 bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c);

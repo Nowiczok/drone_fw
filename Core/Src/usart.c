@@ -22,6 +22,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "commands.h"
+#include "hal_wrappers.h"
 
 uint8_t uart3_rx_buff;
 /* USER CODE END 0 */
@@ -89,7 +90,7 @@ void MX_USART3_UART_Init(void)
   huart3.Instance = USART3;
   huart3.Init.BaudRate = 115200;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
-  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.StopBits = UART_STOPBITS_2;
   huart3.Init.Parity = UART_PARITY_NONE;
   huart3.Init.Mode = UART_MODE_TX_RX;
   huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
@@ -143,16 +144,24 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     __HAL_RCC_USART2_CLK_ENABLE();
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     /**USART2 GPIO Configuration
-    PA2     ------> USART2_TX
     PA15     ------> USART2_RX
+    PB3     ------> USART2_TX
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_15;
+    GPIO_InitStruct.Pin = GPIO_PIN_15;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_3;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     /* USART2 interrupt Init */
     HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
@@ -230,10 +239,12 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
     __HAL_RCC_USART2_CLK_DISABLE();
 
     /**USART2 GPIO Configuration
-    PA2     ------> USART2_TX
     PA15     ------> USART2_RX
+    PB3     ------> USART2_TX
     */
-    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2|GPIO_PIN_15);
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_15);
+
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_3);
 
     /* USART2 interrupt Deinit */
     HAL_NVIC_DisableIRQ(USART2_IRQn);
@@ -273,7 +284,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if(huart == &huart3)
     {
         commands_callback(uart3_rx_buff);
-        HAL_UART_Receive_IT(&huart3, &uart3_rx_buff, sizeof(uint8_t));
+        WrapperRTOS_UART_Receive_IT_fromISR(&huart3, &uart3_rx_buff, sizeof(uint8_t));
     }
 }
 

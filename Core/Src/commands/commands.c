@@ -70,7 +70,7 @@ void commands_task(void* params)
         if(rslt == pdTRUE)
         {
             if (check_checksum(&received_frame)) {
-                command.alt = (float) received_frame.fields.payload[0] / 100.0f;
+                command.alt = (float) (received_frame.fields.payload[2] - 1000) / 2.0f;
                 command.timeout = false;
                 xQueueSendToFront(output_queue_local, &command, 100);
             }

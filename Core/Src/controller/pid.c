@@ -55,7 +55,7 @@ float pid(PidParam_t *pid, float delta_t_s, float process_val_in, float set_poin
     return out;
 }
 
-bool pid_set_params(PidParam_t *param, float P, float I, float D, float slew_rate)
+bool pid_set_params(PidParam_t *param, float P, float I, float D, float slew_rate, float min_out, float max_out)
 {
     if(P<0 || I<0 || D<0)
         return false;
@@ -63,6 +63,9 @@ bool pid_set_params(PidParam_t *param, float P, float I, float D, float slew_rat
     param->Kp = P;
     param->Ki = I;
     param->Kd = D;
+    param->slew_rate = slew_rate;
+    param->max_output = max_out;
+    param->min_output = min_out;
 
     return true;
 }

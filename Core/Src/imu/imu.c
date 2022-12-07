@@ -76,10 +76,10 @@ void imu_task(void* parameters)
 
     float alt = 0.0f;
     float vel = 0.0f;
-    imuMessage_t new_message;
+    imuMessage_t new_message = {.yaw_accum = 0.0f};
     accum_params_t accum_yaw = {.accum = 0.0f, .chunking_progress = 0, .int_chunk = 0.0f, .chunk_size = YAW_BUFFER_CHUNK_SIZE};
-    uint32_t prev_tim_us = 0;
-    uint32_t curr_tim_us = 0;
+    uint32_t prev_tim_s = 0;
+    uint32_t curr_tim_s = 0;
     float delta_tim_s = 0.0f;
     imu_basic_calib_data_t calib_data;
 
@@ -88,12 +88,12 @@ void imu_task(void* parameters)
 
     while(1)
     {
-        curr_tim_us = WrapperRTOS_read_t_10us();
-        delta_tim_s = (float)(calculate_delta_t(curr_tim_us, prev_tim_us)) * 1.0E-6f;
-        prev_tim_us = curr_tim_us;
+        curr_tim_s = HAL_GetTick();
+        delta_tim_s = (float)(curr_tim_s - prev_tim_s)/1000.0f;;
+        prev_tim_s = curr_tim_s;
 
         MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);  // get data from accel and gyro
-        //calculate_accum(mpu6050_status.Gz * delta_tim_s, &buffer_yaw, &accum_yaw);  // accumulate yaw value
+        calculate_accum((mpu6050_status.Gz - GYRO_BIAS_Z) * delta_tim_s, &buffer_yaw, &accum_yaw);  // accumulate yaw value
 
         new_message.acc_x = mpu6050_status.Ax;
         new_message.acc_y = mpu6050_status.Ay;
@@ -102,6 +102,8 @@ void imu_task(void* parameters)
         new_message.gyro_x = mpu6050_status.Gx - GYRO_BIAS_X;
         new_message.gyro_y = mpu6050_status.Gy - GYRO_BIAS_Y;
         new_message.gyro_z = mpu6050_status.Gz - GYRO_BIAS_Z;
+
+        new_message.yaw_accum += (mpu6050_status.Gz - GYRO_BIAS_Z) * delta_tim_s;
 
         xQueueSendToFront(output_queue_local, &new_message, 100);
         vTaskDelay(TASK_EX_PERIOD_MS);
@@ -152,15 +154,18 @@ bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_pa
     if(buffer != NULL && accum_params != NULL)
     {
         float chunk_to_delete = 0.0f;
-        (accum_params->chunking_progress)++;
-        accum_params->int_chunk += sample;
-        if(accum_params->chunking_progress >= accum_params->chunk_size)
+        (accum_params->chunking_progress)++;  // increase number of samples in chunk
+        accum_params->int_chunk += sample;  // accumulate sample
+        if(accum_params->chunking_progress >= accum_params->chunk_size)  // if enough samples were chunked, push it into buffer
         {
             accum_params->chunking_progress = 0;
             ring_buffer_push(buffer, &accum_params->int_chunk);
         }
-        ring_buffer_pull(buffer, &chunk_to_delete);
-        accum_params->accum += accum_params->int_chunk - chunk_to_delete;
+        if(ring_buffer_get_len(buffer) == YAW_BUFFER_CAP)
+        {
+            ring_buffer_pull(buffer, &chunk_to_delete);  // if buffer is full, take oldest chunk
+        }
+        accum_params->accum += sample - chunk_to_delete;
         result = true;
     }
     return result;

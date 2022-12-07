@@ -6,8 +6,18 @@
 #include "semphr.h"
 #include "tim.h"
 
-SemaphoreHandle_t i2c_mutex;
-SemaphoreHandle_t tim_mutex;
+static SemaphoreHandle_t i2c_mutex = NULL;
+static SemaphoreHandle_t uart_mutex = NULL;
+static SemaphoreHandle_t tim_mutex = NULL;
+
+bool WrapperRTOS_init()
+{
+    //create mutexes
+    //TODO check if mutexes where successfully created
+    i2c_mutex = xSemaphoreCreateMutex();
+    uart_mutex = xSemaphoreCreateMutex();
+    tim_mutex = xSemaphoreCreateMutex();
+}
 
 // wrappers on standard HAL i2c mem read/write functions, to make them more FreeRTOS friendly
 HAL_StatusTypeDef WrapperRTOS_i2cMemRead(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
@@ -41,6 +51,38 @@ HAL_StatusTypeDef WrapperRTOS_i2cMemWrite(I2C_HandleTypeDef *hi2c, uint16_t DevA
     }
     return status;
 }
+
+HAL_StatusTypeDef WrapperRTOS_UART_Receive_IT_fromISR(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size)
+{
+    HAL_StatusTypeDef status = HAL_ERROR;
+    BaseType_t task_woken_take = pdFALSE;
+    BaseType_t task_woken_give = pdFALSE;
+    if(uart_mutex != NULL)  // check whether mutex is valid
+    {
+        if (xSemaphoreTakeFromISR(uart_mutex, &task_woken_take))
+        {
+            status = HAL_UART_Receive_IT(huart, pData, Size);
+            xSemaphoreGiveFromISR(uart_mutex, &task_woken_give);
+            portYIELD_FROM_ISR(task_woken_give || task_woken_give);
+        }
+    }
+    return status;
+}
+
+HAL_StatusTypeDef WrapperRTOS_UART_Transmit_DMA(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size)
+{
+    HAL_StatusTypeDef status = HAL_ERROR;
+    if(uart_mutex != NULL)  // check whether mutex is valid
+    {
+        if (xSemaphoreTake(uart_mutex, (TickType_t) 100) == pdTRUE)
+        {
+            status = HAL_UART_Transmit_DMA(huart, pData, Size);
+            xSemaphoreGive(uart_mutex);
+        }
+    }
+    return status;
+}
+
 extern uint64_t high_res_time;
 uint32_t WrapperRTOS_read_t_10us()
 {

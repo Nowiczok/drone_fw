@@ -8,13 +8,17 @@
 #include "stm32g4xx_hal.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
+#include <stdbool.h>
 
 #define US_TIM_PERIOD 0xffff
-
+bool WrapperRTOS_init();
 HAL_StatusTypeDef WrapperRTOS_i2cMemRead(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
                                         uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout);
 HAL_StatusTypeDef WrapperRTOS_i2cMemWrite(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
                                           uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout);
+HAL_StatusTypeDef WrapperRTOS_UART_Receive_IT_fromISR(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size);
+HAL_StatusTypeDef WrapperRTOS_UART_Transmit_DMA(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size);
+
 uint32_t WrapperRTOS_read_t_10us();
 uint32_t calculate_delta_t(uint32_t curr, uint32_t prev);
 #endif //DRONE_CONTROLLER_FW_HAL_WRAPPERS_H

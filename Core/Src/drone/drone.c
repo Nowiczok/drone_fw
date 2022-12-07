@@ -20,6 +20,7 @@
 #include "controller.h"
 #include "drone.h"
 #include "telemetry.h"
+#include "hal_wrappers.h"
 
 extern uint8_t uart3_rx_buff;
 
@@ -34,9 +35,8 @@ void blink_task(void* params);
 
 bool droneInit()
 {
-    //create mutexes
-    i2c_mutex = xSemaphoreCreateMutex();
-    tim_mutex = xSemaphoreCreateMutex();
+    //TODO check success
+    WrapperRTOS_init();
 
     //create queues
     imu_queue = xQueueCreate((UBaseType_t) 10,
@@ -84,11 +84,11 @@ bool droneInit()
     res &= imu_init(imu_queue, &hi2c1);
     res &= barometer_init(altitude_queue, &hi2c1);
     res &= sensor_fusion_init(imu_queue, altitude_queue, mag_queue, sens_fus_queue);
-    telemetry_init(sens_fus_queue, &huart3);
+    //telemetry_init(sens_fus_queue, &huart3);
     //magnetometer_init(mag_queue, &hi2c1);
-    //motors_init(motors_queue, NULL, &htim2);
+    motors_init(motors_queue, NULL, &htim2);
     commands_init(commands_queue);
-    //controller_init(imu_queue, motors_queue, commands_queue);
+    controller_init(sens_fus_queue, motors_queue, commands_queue);
 
     if(!res)
     {

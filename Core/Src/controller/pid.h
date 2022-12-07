@@ -20,7 +20,8 @@ typedef struct {
 } PidParam_t;
 
 float pid(PidParam_t *pid, float delta_t_s, float process_val_in, float set_point_in);
-bool pid_set_params(PidParam_t *param, float P, float I, float D, float slew_rate);
+
+bool pid_set_params(PidParam_t *param, float P, float I, float D, float slew_rate, float min_out, float max_out);
 bool pid_set_sample_min_out(PidParam_t *param, float minOut);
 bool pid_set_sample_max_out(PidParam_t *param, float maxOut);
 void pid_reset(PidParam_t *param);

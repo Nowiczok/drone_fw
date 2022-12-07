@@ -4,6 +4,7 @@
 
 #include "telemetry.h"
 #include "sensor_fusion.h"
+#include "hal_wrappers.h"
 #include <string.h>
 
 typedef struct __attribute__((packed)){
@@ -22,7 +23,7 @@ union ibus_frame{
 };
 
 static UART_HandleTypeDef *uart_handle_ptr;
-static QueueHandle_t tel_queue_local;
+static QueueHandle_t act_data_queue_local;
 static void telemetry_task(void* params);
 static void ibus_checksum(uint8_t frame_bytes[sizeof(union ibus_frame)]);
 
@@ -32,7 +33,7 @@ bool telemetry_init(QueueHandle_t tel_queue, UART_HandleTypeDef *huart)
     if(huart != NULL)
     {
         uart_handle_ptr = huart;
-        tel_queue_local = tel_queue;
+        act_data_queue_local = tel_queue;
         BaseType_t task_creation_res;
         task_creation_res = xTaskCreate(telemetry_task,
                                         "tel_task",
@@ -53,15 +54,15 @@ static void telemetry_task(void* params)
     fused_data_t fused_data;
     while(1)
     {
-        //xQueuePeek(tel_queue_local, &imu_message, 100);
-        xQueueReceive(tel_queue_local, &fused_data, 100);  // receive only for now, should be peek
+        //xQueuePeek(act_data_queue_local, &imu_message, 100);
+        xQueueReceive(act_data_queue_local, &fused_data, 100);  // receive only for now, should be peek
         tel_message.fields.roll = fused_data.roll;
         tel_message.fields.pitch = fused_data.pitch;
-        tel_message.fields.yaw = 21.37f;
+        tel_message.fields.yaw = fused_data.yaw;
         tel_message.fields.alt = fused_data.alt;
         ibus_checksum(tel_message.bytes);
 
-        HAL_UART_Transmit_DMA(uart_handle_ptr, tel_message.bytes, sizeof(union ibus_frame));
+        WrapperRTOS_UART_Transmit_DMA(uart_handle_ptr, tel_message.bytes, sizeof(union ibus_frame));
         vTaskDelay(100);
     }
 }
