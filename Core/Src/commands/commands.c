@@ -69,10 +69,18 @@ void commands_task(void* params)
         rslt = xQueueReceive(input_queue, &received_frame, 200);
         if(rslt == pdTRUE)
         {
-            if (check_checksum(&received_frame)) {
-                command.alt = (float) (received_frame.fields.payload[2] - 1000) / 2.0f;
-                command.timeout = false;
-                xQueueSendToFront(output_queue_local, &command, 100);
+            if (check_checksum(&received_frame))
+            {
+                //if(received_frame.fields.payload[5] > 1500)  // channel 6 arms motors
+                //{
+                    command.alt = (float) (received_frame.fields.payload[2] - 1000) / 2.0f;
+                    command.timeout = false;
+                    xQueueSendToFront(output_queue_local, &command, 100);
+                //}else
+                //{
+                    //command.timeout = true;  // controller decides what to do with comm timeout
+                    //xQueueSendToFront(output_queue_local, &command, 100);
+                //}
             }
         }else{
             // comm timeout handling

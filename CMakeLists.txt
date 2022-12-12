@@ -53,7 +53,7 @@ include_directories(Core/Inc Drivers/STM32G4xx_HAL_Driver/Inc Drivers/STM32G4xx_
         Drivers/CMSIS/Device/ST/STM32G4xx/Include Drivers/CMSIS/Include Core/Src/FreeRTOS/include
         Core/Src/FreeRTOS/portable/GCC/ARM_CM4F Core/Src/imu Core/Src/drone Core/Src/motors Core/Src/common
         Core/Src/controller Core/Src/commands Core/Src/barometer Core/Src/magnetometer Core/Src/sensor_fusion
-        Core/Src/common/linear_algebra Core/Src/telemetry )
+        Core/Src/common/linear_algebra Core/Src/telemetry Core/Src/curr_meas)
 
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32G441xx)
 

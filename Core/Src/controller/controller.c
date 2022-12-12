@@ -36,14 +36,14 @@ void controller_task(void* params)
 {
     uint32_t prev_tim_us = 0;
     uint32_t curr_tim_us = 0;
-    float delta_tim_s = 0.0f;
+    volatile float delta_tim_s = 0.0f;
     command_hover_mode_t command;
     fused_data_t act_data_message;
     PidParam_t pid_roll;
     PidParam_t pid_pitch;
     PidParam_t pid_yaw;
     PidParam_t pid_alt;
-    motorsMessage_t motors_message;
+    motorsMessage_t motors_message = {.throttle = 0, .rollSpeed = 0, .pitchSpeed = 0, .yawSpeed = 0};
 
     pid_set_params(&pid_roll, ROLL_PID_P, ROLL_PID_I, ROLL_PID_D, ROLL_SLEW_RATE, -500.0f, 500.0f);
     pid_set_params(&pid_pitch, PITCH_PID_P, PITCH_PID_I, PITCH_PID_D, PITCH_SLEW_RATE, -500.0f, 500.0f);
@@ -57,7 +57,7 @@ void controller_task(void* params)
     while(1)
     {
         curr_tim_us = WrapperRTOS_read_t_10us();
-        delta_tim_s = (float)(calculate_delta_t(curr_tim_us, prev_tim_us)) * 1.0E-6f;
+        delta_tim_s = (float)(curr_tim_us - prev_tim_us)/10e5f;
         prev_tim_us = curr_tim_us;
 
         curr_time_ref = HAL_GetTick();
@@ -69,17 +69,19 @@ void controller_task(void* params)
         xQueueReceive(commands_queue_local, &command, 1);
         xQueueReceive(act_data_queue_local, &act_data_message, 10);
 
-
-        //motors_message.throttle = pid(&pid_alt, delta_tim_s, act_data_message.alt, command.alt);
         if(!command.timeout)
         {
-            motors_message.rollSpeed =  pid(&pid_roll, delta_tim_s, act_data_message.roll, 0);
-            motors_message.pitchSpeed =  pid(&pid_pitch, delta_tim_s, act_data_message.pitch, 0);
-            motors_message.yawSpeed =  pid(&pid_yaw, delta_tim_s, act_data_message.yaw, 0);
+            //motors_message.rollSpeed =  pid(&pid_roll, delta_tim_s, act_data_message.roll, 0);
+            //motors_message.pitchSpeed =  pid(&pid_pitch, delta_tim_s, act_data_message.pitch, 0);
             motors_message.throttle = command.alt;
         }
         else
+        {
+            motors_message.rollSpeed =  0;
+            motors_message.pitchSpeed =  0;
+            motors_message.yawSpeed =  0;
             motors_message.throttle = 0;
-                    xQueueSendToFront(motors_queue_local, &motors_message, 100);
+        }
+        xQueueSendToFront(motors_queue_local, &motors_message, 100);
     }
 }

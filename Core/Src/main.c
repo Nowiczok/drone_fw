@@ -99,9 +99,9 @@ int main(void)
   MX_TIM7_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
+  MX_TIM1_Init();
   MX_ADC1_Init();
   MX_OPAMP1_Init();
-  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
     droneInit();
 
@@ -170,6 +170,7 @@ void SystemClock_Config(void)
 #define HIGH_RES_TIMER_PERIOD 65535
 volatile uint64_t high_res_time = 0;
 volatile uint32_t aux = 0;
+volatile int32_t tim_diff;
 /* USER CODE END 4 */
 
 /**
@@ -186,6 +187,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   if(htim->Instance == TIM7)
   {
+      tim_diff = aux - high_res_time/100;
       high_res_time += HIGH_RES_TIMER_PERIOD;
       aux = HAL_GetTick();
   }

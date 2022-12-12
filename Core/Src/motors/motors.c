@@ -89,9 +89,9 @@ void control_motors(motorsMessage_t input_message)
 
 
     __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_1, pwm_vals[0] + PWM_DUTY_OFFSET + 191);  // 201
-    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_2, pwm_vals[1] + PWM_DUTY_OFFSET + 158);  // 168
-    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_3, pwm_vals[2] + PWM_DUTY_OFFSET + 156); // 166
-    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_4, pwm_vals[3] + PWM_DUTY_OFFSET + 161); //171
+    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_2, pwm_vals[1] + PWM_DUTY_OFFSET + 150);  // 168
+    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_3, pwm_vals[2] + PWM_DUTY_OFFSET + 156);  // 166
+    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_4, pwm_vals[3] + PWM_DUTY_OFFSET + 161);  //171
 }
 
 static float line_approximation(float x, const float *reference_x, const float *reference_y, uint8_t num_of_ref_pairs)

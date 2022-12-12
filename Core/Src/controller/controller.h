@@ -10,18 +10,18 @@
 #include "queue.h"
 #include "stm32g4xx_hal.h"
 
-#define ROLL_PID_P 1.0f
-#define ROLL_PID_I 0.1f
+#define ROLL_PID_P 2.0f
+#define ROLL_PID_I 0.5f
 #define ROLL_PID_D 0.0f
 #define ROLL_SLEW_RATE 25
 
-#define PITCH_PID_P 1.0f
-#define PITCH_PID_I 0.1f
+#define PITCH_PID_P 2.0f
+#define PITCH_PID_I 0.5f
 #define PITCH_PID_D 0.0f
 #define PITCH_SLEW_RATE 25
 
-#define YAW_PID_P 1.0f
-#define YAW_PID_I 0.1f
+#define YAW_PID_P 2.0f
+#define YAW_PID_I 0.5f
 #define YAW_PID_D 0.0f
 #define YAW_SLEW_RATE 25
 

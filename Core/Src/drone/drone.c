@@ -10,6 +10,8 @@
 #include "i2c.h"
 #include "tim.h"
 #include "usart.h"
+#include "adc.h"
+#include "opamp.h"
 
 #include "imu.h"
 #include "barometer.h"
@@ -20,6 +22,7 @@
 #include "controller.h"
 #include "drone.h"
 #include "telemetry.h"
+#include "curr_meas.h"
 #include "hal_wrappers.h"
 
 extern uint8_t uart3_rx_buff;
@@ -30,6 +33,7 @@ QueueHandle_t commands_queue;
 QueueHandle_t altitude_queue;
 QueueHandle_t mag_queue;
 QueueHandle_t sens_fus_queue;
+QueueHandle_t curr_meas_queue;
 
 void blink_task(void* params);
 
@@ -61,7 +65,11 @@ bool droneInit()
 
     sens_fus_queue = xQueueCreate((UBaseType_t) 10,
                                   (UBaseType_t) sizeof(fused_data_t));
-    vQueueAddToRegistry(mag_queue, "sf_q");
+    vQueueAddToRegistry(sens_fus_queue, "sf_q");
+
+    curr_meas_queue = xQueueCreate((UBaseType_t) 10,
+                                  (UBaseType_t) sizeof(curr_meas_message_t));
+    vQueueAddToRegistry(curr_meas_queue, "curr_q");
 
     //initialize hardware
     HAL_TIM_Base_Start_IT(&htim7);  // start high resolution timer
@@ -89,6 +97,7 @@ bool droneInit()
     motors_init(motors_queue, NULL, &htim2);
     commands_init(commands_queue);
     controller_init(sens_fus_queue, motors_queue, commands_queue);
+    curr_meas_init(curr_meas_queue, &hadc1, &hopamp1);
 
     if(!res)
     {
