@@ -8,7 +8,6 @@
 #include "barometer.h"
 #include "bme68x.h"
 #include "hal_wrappers.h"
-#include "i2c.h"
 #include "misc_utils.h"
 #include <math.h>
 
@@ -19,7 +18,7 @@
 #define MOLAR_MASS_AIR   0.0289644f
 
 typedef struct{
-    I2C_HandleTypeDef* hi2c;
+    void* hi2c;
     uint8_t dev_addr;
 }bme_i2c_params_t;
 
@@ -33,7 +32,7 @@ static BME280_INTF_RET_TYPE bme280_i2c_write(uint8_t reg_addr, uint8_t *reg_data
 static void bme280_delay_us(uint32_t period, void *intf_ptr);
 float calculate_altitude(float ref_alt, float ref_press, float press, float temp);
 
-bool barometer_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
+bool barometer_init(QueueHandle_t output_queue, void *hi2c)
 {
     BaseType_t result;
     output_queue_local = output_queue;
@@ -47,7 +46,6 @@ bool barometer_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
     return result == pdPASS;
 }
 
-volatile int8_t rslt = BME280_OK;
 void barometer_task(void* params)
 {
 
@@ -55,8 +53,12 @@ void barometer_task(void* params)
     uint8_t settings_sel = 0;
     uint32_t req_delay;
     struct bme280_data comp_data;
-    float alt = 0.0f;
+    baro_message_t new_message;
     float ref_press = 0.0f;
+    BME280_INTF_RET_TYPE bme_init_res;
+    BME280_INTF_RET_TYPE bme_settings_res;
+    BME280_INTF_RET_TYPE bme_mode_res;
+    BME280_INTF_RET_TYPE bme_res;
 
     // pass HW dependent functions
     dev.intf = BME280_I2C_INTF;
@@ -64,26 +66,39 @@ void barometer_task(void* params)
     dev.write = bme280_i2c_write;
     dev.read = bme280_i2c_read;
     dev.delay_us = bme280_delay_us;
-    rslt = bme280_init(&dev);
+    bme_init_res = bme280_init(&dev);
 
     settings_sel = BME280_OSR_PRESS_SEL;
     settings_sel |= BME280_OSR_TEMP_SEL;
     settings_sel |= BME280_OSR_HUM_SEL;
     settings_sel |= BME280_STANDBY_SEL;
     settings_sel |= BME280_FILTER_SEL;
-    rslt = bme280_set_sensor_settings(settings_sel, &dev);
-    rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
+    bme_settings_res = bme280_set_sensor_settings(settings_sel, &dev);
+    bme_mode_res = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
+
+    if(bme_init_res != BME280_OK || bme_settings_res != BME280_OK || bme_mode_res != BME280_OK){
+        new_message.status = BARO_INIT_ERROR;
+        while(1){
+            xQueueSendToFront(output_queue_local, &new_message, 100);
+        }
+    }
 
     vTaskDelay(100);
-    rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
-    ref_press = comp_data.pressure;
+    bme_res = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
+    ref_press = (float)comp_data.pressure;
     while(1)
     {
         dev.delay_us(1000, dev.intf_ptr);
-        rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
-        float temp_K = (float)comp_data.temperature + 273.0f;
-        alt = calculate_altitude(0.0f, ref_press, (float) comp_data.pressure, temp_K);
-        BaseType_t rslt = xQueueSendToFront(output_queue_local, &alt, 100);
+        bme_res = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
+        if(bme_res == BME280_OK) {
+            float temp_K = (float) comp_data.temperature + 273.0f;
+            new_message.alt = calculate_altitude(0.0f, ref_press, (float) comp_data.pressure, temp_K);
+            new_message.status = BARO_OK;
+        }else{
+            new_message.status = BARO_ERROR;
+        }
+        BaseType_t rslt = xQueueSendToFront(output_queue_local, &new_message, 100);
+        vTaskDelay(BARO_TASK_PERIOD_MS);
     }
 }
 
@@ -91,27 +106,27 @@ void barometer_task(void* params)
 BME280_INTF_RET_TYPE bme280_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr)
 {
     bme_i2c_params_t* params = (bme_i2c_params_t*)intf_ptr;
-    HAL_StatusTypeDef res = WrapperRTOS_i2cMemRead(params->hi2c,
+    Wrapper_RTOS_status_t res = WrapperRTOS_i2cMemRead(params->hi2c,
                                                    params->dev_addr<<1,
                                                    reg_addr,
                                                    1,
                                                    reg_data,
                                                    len,
                                                    100);
-    return (res == HAL_OK) ? BME280_OK : 1;
+    return (res == WrRTOS_OK) ? BME280_OK : 1;
 }
 
 BME280_INTF_RET_TYPE bme280_i2c_write(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr)
 {
     bme_i2c_params_t* params = (bme_i2c_params_t*)intf_ptr;
-    HAL_StatusTypeDef res = WrapperRTOS_i2cMemWrite(params->hi2c,
+    Wrapper_RTOS_status_t res = WrapperRTOS_i2cMemWrite(params->hi2c,
                                                     params->dev_addr<<1,
                                                     reg_addr,
                                                     1,
                                                     reg_data,
                                                     len,
                                                     100);
-    return (res == HAL_OK) ? BME280_OK : 1;
+    return (res == WrRTOS_OK) ? BME280_OK : 1;
 }
 
 void bme280_delay_us(uint32_t period, void *intf_ptr)

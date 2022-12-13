@@ -86,10 +86,10 @@ void imu_task(void* parameters)
         new_message.status = IMU_INIT_ERROR;
         while(1){
             xQueueSendToFront(output_queue_local, &new_message, 100);
-            vTaskDelay(TASK_EX_PERIOD_MS);
+            vTaskDelay(IMU_TASK_EX_PERIOD_MS);
         }
     }
-    
+
     ring_buffer_init(&buffer_yaw, yaw_buffer_mem, YAW_BUFFER_CAP, sizeof(float));
 
     //debug only
@@ -124,7 +124,7 @@ void imu_task(void* parameters)
             new_message.status = IMU_ERROR;
         }
         xQueueSendToFront(output_queue_local, &new_message, 100);
-        vTaskDelay(TASK_EX_PERIOD_MS);
+        vTaskDelay(IMU_TASK_EX_PERIOD_MS);
     }
 }
 

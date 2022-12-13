@@ -10,7 +10,7 @@
 #include "queue.h"
 #include "stm32g4xx_hal.h"
 
-#define TASK_EX_PERIOD_MS 1
+#define IMU_TASK_EX_PERIOD_MS 1
 
 #define YAW_BUFFER_CAP 256  // number of chunks in buffer
 #define YAW_BUFFER_CHUNK_SIZE 5  // chunk size is number of samples that are accumulated together into one ring buffer element
