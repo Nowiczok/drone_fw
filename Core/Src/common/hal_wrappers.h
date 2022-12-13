@@ -10,10 +10,10 @@
 #include <stdbool.h>
 
 typedef enum{
-    WrRTOS_OK        = 0x00U,
-    WrRTOS_ERROR     = 0x00U,
-    WrRTOS_BUSY      = 0x00U,
-    WrRTOS_TIMEOUT   = 0x00U
+    WrRTOS_OK          = 0x00U,
+    WrRTOS_ERROR       = 0x01U,
+    WrRTOS_TIMEOUT     = 0x03U,
+    WrRTOS_INPUT_ERROR = 0x04U,
 }Wrapper_RTOS_status_t;
 
 #define US_TIM_PERIOD 0xffff

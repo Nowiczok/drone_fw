@@ -71,9 +71,6 @@ bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
 
 void imu_task(void* parameters)
 {
-    MPU6050_Init(i2c_handle_ptr);
-    ring_buffer_init(&buffer_yaw, yaw_buffer_mem, YAW_BUFFER_CAP, sizeof(float));
-
     float alt = 0.0f;
     float vel = 0.0f;
     imuMessage_t new_message = {.yaw_accum = 0.0f};
@@ -82,6 +79,18 @@ void imu_task(void* parameters)
     uint32_t curr_tim_s = 0;
     float delta_tim_s = 0.0f;
     imu_basic_calib_data_t calib_data;
+    mpu6050_status_t mpu_stat;
+
+    mpu_stat = MPU6050_Init(i2c_handle_ptr);
+    if(mpu_stat != MPU_6050_OK){
+        new_message.status = IMU_INIT_ERROR;
+        while(1){
+            xQueueSendToFront(output_queue_local, &new_message, 100);
+            vTaskDelay(TASK_EX_PERIOD_MS);
+        }
+    }
+    
+    ring_buffer_init(&buffer_yaw, yaw_buffer_mem, YAW_BUFFER_CAP, sizeof(float));
 
     //debug only
     //get_calib_data(&calib_data);
@@ -89,22 +98,31 @@ void imu_task(void* parameters)
     while(1)
     {
         curr_tim_s = HAL_GetTick();
-        delta_tim_s = (float)(curr_tim_s - prev_tim_s)/1000.0f;;
+        delta_tim_s = (float)(curr_tim_s - prev_tim_s)/1000.0f;
         prev_tim_s = curr_tim_s;
 
-        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);  // get data from accel and gyro
-        calculate_accum((mpu6050_status.Gz - GYRO_BIAS_Z) * delta_tim_s, &buffer_yaw, &accum_yaw);  // accumulate yaw value
+        // get data from accel and gyro
+        mpu_stat = MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);
+        if(mpu_stat == MPU_6050_OK) {
+            calculate_accum((mpu6050_status.Gz - GYRO_BIAS_Z) * delta_tim_s, &buffer_yaw,
+                            &accum_yaw);  // accumulate yaw value
 
-        new_message.acc_x = mpu6050_status.Ax;
-        new_message.acc_y = mpu6050_status.Ay;
-        new_message.acc_z = mpu6050_status.Az;
+            new_message.acc_x = mpu6050_status.Ax;
+            new_message.acc_y = mpu6050_status.Ay;
+            new_message.acc_z = mpu6050_status.Az;
 
-        new_message.gyro_x = mpu6050_status.Gx - GYRO_BIAS_X;
-        new_message.gyro_y = mpu6050_status.Gy - GYRO_BIAS_Y;
-        new_message.gyro_z = mpu6050_status.Gz - GYRO_BIAS_Z;
+            new_message.gyro_x = mpu6050_status.Gx - GYRO_BIAS_X;
+            new_message.gyro_y = mpu6050_status.Gy - GYRO_BIAS_Y;
+            new_message.gyro_z = mpu6050_status.Gz - GYRO_BIAS_Z;
 
-        new_message.yaw_accum += (mpu6050_status.Gz - GYRO_BIAS_Z) * delta_tim_s;
+            new_message.yaw_accum += (mpu6050_status.Gz - GYRO_BIAS_Z) * delta_tim_s;
 
+            new_message.status = IMU_OK;
+        }else if(mpu_stat == MPU_6050_TIMEOUT){
+            new_message.status = IMU_TIMEOUT;
+        }else{
+            new_message.status = IMU_ERROR;
+        }
         xQueueSendToFront(output_queue_local, &new_message, 100);
         vTaskDelay(TASK_EX_PERIOD_MS);
     }

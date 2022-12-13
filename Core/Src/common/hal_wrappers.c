@@ -26,33 +26,51 @@ bool WrapperRTOS_init()
 Wrapper_RTOS_status_t WrapperRTOS_i2cMemRead(void *hi2c, uint16_t DevAddress, uint16_t MemAddress,
                                          uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout)
 {
-    HAL_StatusTypeDef status = HAL_ERROR;
-    if(i2c_mutex != NULL)  // check whether mutex is valid
-    {
-        if(xSemaphoreTake(i2c_mutex, (TickType_t)Timeout) == pdTRUE) // use HAL i2c only if none other task uses it
-        {
+    Wrapper_RTOS_status_t out_res;
+    HAL_StatusTypeDef hal_res;
+    if(i2c_mutex != NULL && hi2c != NULL && pData != NULL){
+        if(xSemaphoreTake(i2c_mutex, (TickType_t)Timeout) == pdTRUE){  // use HAL i2c only if none other task uses it
             //TODO: change it to nonblocking
-            status = HAL_I2C_Mem_Read(hi2c, DevAddress, MemAddress, MemAddSize, pData, Size, Timeout);
+            hal_res = HAL_I2C_Mem_Read(hi2c, DevAddress, MemAddress, MemAddSize, pData, Size, Timeout);
+            if(hal_res == HAL_OK){
+                out_res = WrRTOS_OK;
+            }else{
+                out_res = WrRTOS_ERROR;  // i2c transaction unsuccessful
+            }
             xSemaphoreGive(i2c_mutex);
+        }else{
+            out_res = WrRTOS_TIMEOUT;  // semaphore taking timeout
         }
+    }else{
+        out_res = WrRTOS_INPUT_ERROR;  // mutex or one of pointers uninitialized
     }
-    return status;
+    return out_res;
 }
 
 Wrapper_RTOS_status_t WrapperRTOS_i2cMemWrite(void *hi2c, uint16_t DevAddress, uint16_t MemAddress,
                                               uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout)
 {
-    HAL_StatusTypeDef status = HAL_ERROR;
-    if(i2c_mutex != NULL)  // check whether mutex is valid
+    Wrapper_RTOS_status_t out_res;
+    HAL_StatusTypeDef hal_res;
+    if(i2c_mutex != NULL && pData != NULL)  // check whether mutex is valid
     {
         if(xSemaphoreTake(i2c_mutex, (TickType_t)Timeout) == pdTRUE) // use HAL i2c only if none other task uses it
         {
             //TODO: change it to nonblocking
-            status = HAL_I2C_Mem_Write(hi2c, DevAddress, MemAddress, MemAddSize, pData, Size, Timeout);
+            hal_res = HAL_I2C_Mem_Write(hi2c, DevAddress, MemAddress, MemAddSize, pData, Size, Timeout);
+            if(hal_res == HAL_OK){
+                out_res = WrRTOS_OK;
+            }else{
+                out_res = WrRTOS_ERROR;
+            }
             xSemaphoreGive(i2c_mutex);
+        }else{
+            out_res = WrRTOS_TIMEOUT;  // semaphore taking timeout
         }
+    }else{
+        out_res = WrRTOS_INPUT_ERROR;  // mutex or one of pointers uninitialized
     }
-    return status;
+    return out_res;
 }
 
 Wrapper_RTOS_status_t WrapperRTOS_UART_Receive_IT_fromISR(void *huart, uint8_t *pData, uint16_t Size)
@@ -135,16 +153,14 @@ Wrapper_RTOS_status_t WrapperRTOS_ADC_read_blocking(void* hadc, uint16_t* data, 
         hal_res = HAL_ADC_PollForConversion(hadc, timeout);
         if(hal_res == HAL_OK){
             *data = HAL_ADC_GetValue(hadc);
-            out_res = WrRTOS_OK;
+            out_res = WrRTOS_OK;  // polling successfull
         }else if(hal_res == HAL_TIMEOUT){
-            out_res = WrRTOS_TIMEOUT;
+            out_res = WrRTOS_TIMEOUT;  // timeout of polling for ADC conversion
         }else{
-            out_res = WrRTOS_ERROR;
+            out_res = WrRTOS_ERROR;  // polling for conversions returned something different
         }
-    }else if(hal_res == HAL_BUSY){
-        out_res = WrRTOS_BUSY;
     }else{
-        out_res = WrRTOS_ERROR;
+        out_res = WrRTOS_ERROR;  // starting of ADC unsuccessful, HAL_ERROR
     }
     return out_res;
 }

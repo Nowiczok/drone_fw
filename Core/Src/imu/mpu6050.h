@@ -13,6 +13,13 @@
 #include <stdint.h>
 #include "i2c.h"
 
+typedef enum{
+    MPU_6050_OK,
+    MPU_6050_TIMEOUT,
+    MPU_6050_INPUT_ERROR,
+    MPU_6050_ERROR
+}mpu6050_status_t;
+
 // MPU6050 structure
 typedef struct
 {
@@ -47,7 +54,7 @@ typedef struct
     float P[2][2];
 } Kalman_no_control_commons_t;
 
-uint8_t MPU6050_Init(I2C_HandleTypeDef *I2Cx);
+mpu6050_status_t MPU6050_Init(void *I2Cx);
 
 void MPU6050_Read_Accel(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
 
@@ -55,6 +62,6 @@ void MPU6050_Read_Gyro(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
 
 void MPU6050_Read_Temp(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);
 
-void MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct, float delta_t_s);
+mpu6050_status_t MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct, float delta_t_s);
 
 double Kalman_getAngle(Kalman_no_control_commons_t *Kalman, double newAngle, double newRate, double dt);

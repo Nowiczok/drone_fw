@@ -16,6 +16,13 @@
 #define YAW_BUFFER_CHUNK_SIZE 5  // chunk size is number of samples that are accumulated together into one ring buffer element
 #define Z_ACC_IDLE 9.81f
 
+typedef enum{
+    IMU_OK,
+    IMU_ERROR,
+    IMU_TIMEOUT,
+    IMU_INIT_ERROR
+}imu_status_t;
+
 typedef struct {
     float acc_x;
     float acc_y;
@@ -26,6 +33,8 @@ typedef struct {
     float gyro_z;
 
     float yaw_accum;
+
+    imu_status_t status;
 } imuMessage_t;
 
 bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c);
