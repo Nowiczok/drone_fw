@@ -4,7 +4,10 @@
 
 #include "hal_wrappers.h"
 #include "semphr.h"
+#include "stm32g4xx_hal.h"
+
 #include "tim.h"
+#include "adc.h"
 
 static SemaphoreHandle_t i2c_mutex = NULL;
 static SemaphoreHandle_t uart_mutex = NULL;
@@ -20,8 +23,8 @@ bool WrapperRTOS_init()
 }
 
 // wrappers on standard HAL i2c mem read/write functions, to make them more FreeRTOS friendly
-HAL_StatusTypeDef WrapperRTOS_i2cMemRead(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
-                                        uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout)
+Wrapper_RTOS_status_t WrapperRTOS_i2cMemRead(void *hi2c, uint16_t DevAddress, uint16_t MemAddress,
+                                         uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout)
 {
     HAL_StatusTypeDef status = HAL_ERROR;
     if(i2c_mutex != NULL)  // check whether mutex is valid
@@ -36,8 +39,8 @@ HAL_StatusTypeDef WrapperRTOS_i2cMemRead(I2C_HandleTypeDef *hi2c, uint16_t DevAd
     return status;
 }
 
-HAL_StatusTypeDef WrapperRTOS_i2cMemWrite(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
-                                         uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout)
+Wrapper_RTOS_status_t WrapperRTOS_i2cMemWrite(void *hi2c, uint16_t DevAddress, uint16_t MemAddress,
+                                              uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout)
 {
     HAL_StatusTypeDef status = HAL_ERROR;
     if(i2c_mutex != NULL)  // check whether mutex is valid
@@ -52,7 +55,7 @@ HAL_StatusTypeDef WrapperRTOS_i2cMemWrite(I2C_HandleTypeDef *hi2c, uint16_t DevA
     return status;
 }
 
-HAL_StatusTypeDef WrapperRTOS_UART_Receive_IT_fromISR(UART_HandleTypeDef *huart, uint8_t *pData, uint16_t Size)
+Wrapper_RTOS_status_t WrapperRTOS_UART_Receive_IT_fromISR(void *huart, uint8_t *pData, uint16_t Size)
 {
     HAL_StatusTypeDef status = HAL_ERROR;
     BaseType_t task_woken_take = pdFALSE;
@@ -69,7 +72,7 @@ HAL_StatusTypeDef WrapperRTOS_UART_Receive_IT_fromISR(UART_HandleTypeDef *huart,
     return status;
 }
 
-HAL_StatusTypeDef WrapperRTOS_UART_Transmit_DMA(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size)
+Wrapper_RTOS_status_t WrapperRTOS_UART_Transmit_DMA(void *huart, const uint8_t *pData, uint16_t Size)
 {
     HAL_StatusTypeDef status = HAL_ERROR;
     if(uart_mutex != NULL)  // check whether mutex is valid
@@ -95,6 +98,11 @@ uint32_t WrapperRTOS_read_t_10us()
     return time_10us;
 }
 
+uint32_t WrapperRTOS_read_t_1ms()
+{
+    return HAL_GetTick();
+}
+
 uint32_t calculate_delta_t(uint32_t curr, uint32_t prev)
 {
     uint32_t delta;
@@ -107,4 +115,36 @@ uint32_t calculate_delta_t(uint32_t curr, uint32_t prev)
     }
 
     return delta;
+}
+
+Wrapper_RTOS_status_t WrapperRTOS_ADC_init(void* hadc, void* amp)
+{
+    taskENTER_CRITICAL();
+    HAL_ADCEx_Calibration_Start(hadc, ADC_SINGLE_ENDED);
+    taskEXIT_CRITICAL();
+    vTaskDelay(200);
+    HAL_OPAMP_Start(amp);
+}
+
+Wrapper_RTOS_status_t WrapperRTOS_ADC_read_blocking(void* hadc, uint16_t* data, uint32_t timeout){
+    Wrapper_RTOS_status_t out_res;
+    HAL_StatusTypeDef hal_res;
+
+    hal_res = HAL_ADC_Start(hadc);
+    if(hal_res == HAL_OK){
+        hal_res = HAL_ADC_PollForConversion(hadc, timeout);
+        if(hal_res == HAL_OK){
+            *data = HAL_ADC_GetValue(hadc);
+            out_res = WrRTOS_OK;
+        }else if(hal_res == HAL_TIMEOUT){
+            out_res = WrRTOS_TIMEOUT;
+        }else{
+            out_res = WrRTOS_ERROR;
+        }
+    }else if(hal_res == HAL_BUSY){
+        out_res = WrRTOS_BUSY;
+    }else{
+        out_res = WrRTOS_ERROR;
+    }
+    return out_res;
 }
