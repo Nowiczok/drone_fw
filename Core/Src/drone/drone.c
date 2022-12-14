@@ -56,7 +56,7 @@ bool droneInit()
     vQueueAddToRegistry(commands_queue, "com_q");
 
     altitude_queue = xQueueCreate((UBaseType_t) 10,
-                                  (UBaseType_t) sizeof(float));
+                                  (UBaseType_t) sizeof(baro_message_t));
     vQueueAddToRegistry(altitude_queue, "alt_q");
 
     mag_queue = xQueueCreate((UBaseType_t) 10,

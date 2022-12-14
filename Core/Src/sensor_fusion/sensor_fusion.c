@@ -53,7 +53,7 @@ bool sensor_fusion_init(QueueHandle_t imu_queue, QueueHandle_t baro_queue, Queue
 void sensor_fusion_task(void* params)
 {
     imuMessage_t imu_data;
-    float baro_alt;
+    baro_message_t baro_message;
     kalman_angles_init(0.017f, 0.02f, 0.05f);
     kalman_alt_init(0.1f, 0.02f, 0.05f);
     uint32_t prev_time = 0;
@@ -78,7 +78,7 @@ void sensor_fusion_task(void* params)
     {
         BaseType_t queue_rec_rslt = pdTRUE;
         queue_rec_rslt &= xQueueReceive(imu_queue_local, &imu_data, 10);
-        queue_rec_rslt &= xQueueReceive(baro_queue_local, &baro_alt, 10);
+        queue_rec_rslt &= xQueueReceive(baro_queue_local, &baro_message, 10);
         if(queue_rec_rslt == pdTRUE) // proceed only if sensors provided data
         {
             curr_time = WrapperRTOS_read_t_10us();
@@ -100,7 +100,7 @@ void sensor_fusion_task(void* params)
             variable_part_pitch.Z[1][0] = -imu_data.gyro_y;  // TODO: check whether it really should be gyro_x
             variable_part_roll.Z[0][0] = roll;
             variable_part_roll.Z[1][0] = imu_data.gyro_x;  // TODO: check whether it really should be gyro_y
-            variable_part_alt.Z = baro_alt;
+            variable_part_alt.Z = baro_message.alt;
             float acc_raw = sqrtf(powf(imu_data.acc_x, 2) + powf(imu_data.acc_y, 2) + powf(imu_data.acc_z, 2));;
             variable_part_alt.a = acc_raw - 1.1342f;
             kalman_angles(delta_t_s);
@@ -111,7 +111,7 @@ void sensor_fusion_task(void* params)
             output_data.alt = variable_part_alt.X[0][0];
 
             calculate_vars(&var_acc, variable_part_alt.a, 3000);
-            calculate_vars(&no_fus_var_alt, baro_alt, 3000);
+            calculate_vars(&no_fus_var_alt, baro_message.alt, 3000);
             calculate_vars(&fus_var_alt, output_data.alt, 3000);
             calculate_vars(&no_fus_var_roll, roll, 3000);
             calculate_vars(&fus_var_roll, output_data.roll, 3000);

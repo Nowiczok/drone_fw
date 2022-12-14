@@ -7,11 +7,11 @@
 
 #include <stdbool.h>
 
-#define BARO_TASK_PERIOD_MS 1
+#define BARO_TASK_PERIOD_MS 10
 typedef enum{
-    BARO_OK,
-    BARO_ERROR,
-    BARO_INIT_ERROR
+    BARO_OK = 0x00,
+    BARO_ERROR = 0x01,
+    BARO_INIT_ERROR = 0x02
 }barometer_status_t;
 
 typedef struct{

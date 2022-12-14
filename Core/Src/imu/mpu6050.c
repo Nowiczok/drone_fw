@@ -83,7 +83,7 @@ mpu6050_status_t MPU6050_Init(void *I2Cx)
         mem_read = WrapperRTOS_i2cMemRead(I2Cx, MPU6050_ADDR, WHO_AM_I_REG,
                                           1, &check, 1, i2c_timeout);
 
-        if (check == 0x68 && mem_read == WrRTOS_OK) // 0x68 will be returned by the sensor if everything goes well
+        if (check == 0x78 && mem_read == WrRTOS_OK) // 0x68 will be returned by the sensor if everything goes well
         {
             // power management register 0X6B we should write all 0's to wake the sensor up
             Data = 0;
