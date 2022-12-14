@@ -76,12 +76,13 @@ void barometer_task(void* params)
     bme_settings_res = bme280_set_sensor_settings(settings_sel, &dev);
     bme_mode_res = bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev);
 
-    if(bme_init_res != BME280_OK || bme_settings_res != BME280_OK || bme_mode_res != BME280_OK){
+    //REVISIT: when uncommented causes barometer to return same wrong value all the time 
+    /*if(bme_init_res != BME280_OK || bme_settings_res != BME280_OK || bme_mode_res != BME280_OK){
         new_message.status = BARO_INIT_ERROR;
         while(1){
             xQueueSendToFront(output_queue_local, &new_message, 100);
         }
-    }
+    }*/
 
     vTaskDelay(100);
     bme_res = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
