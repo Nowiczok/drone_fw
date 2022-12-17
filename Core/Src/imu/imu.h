@@ -37,6 +37,6 @@ typedef struct {
     imu_status_t status;
 } imuMessage_t;
 
-bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c);
+bool imu_init(QueueHandle_t output_queue, void *hi2c);
 
 #endif //DRONE_CONTROLLER_FW_IMU_H

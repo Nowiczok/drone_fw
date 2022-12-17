@@ -183,7 +183,7 @@ void MPU6050_Read_Temp(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct)
     DataStruct->Temperature = (float)((int16_t)temp / (float)340.0 + (float)36.53);
 }
 
-mpu6050_status_t MPU6050_Read_All(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct, float delta_t_s)
+mpu6050_status_t MPU6050_Read_All(void *I2Cx, MPU6050_t *DataStruct)
 {
     uint8_t Rec_Data[14];
     int16_t temp;

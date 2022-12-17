@@ -103,7 +103,7 @@ int main(void)
   MX_ADC1_Init();
   MX_OPAMP1_Init();
   /* USER CODE BEGIN 2 */
-    droneInit();
+    drone_init();
 
   // FreeRTOS stuff
   vTaskStartScheduler();

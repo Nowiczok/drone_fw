@@ -162,3 +162,10 @@ bool kalman_3D_control_alg(const Kalman_control_commons_t *comm_part, Kalman_con
     }
     return result;
 }
+
+/*bool kalman_3D_control_alg_bis(const Kalman_control_commons_t *comm_part, Kalman_control_variables_t *var_part)
+{
+
+}*/
+
+//void

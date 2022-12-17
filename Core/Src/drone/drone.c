@@ -37,7 +37,7 @@ QueueHandle_t curr_meas_queue;
 
 void blink_task(void* params);
 
-bool droneInit()
+bool drone_init()
 {
     //TODO check success
     WrapperRTOS_init();

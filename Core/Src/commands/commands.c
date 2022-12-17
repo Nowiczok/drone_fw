@@ -13,7 +13,6 @@
 
 static QueueHandle_t output_queue_local;
 static QueueHandle_t input_queue;
-static command_hover_mode_t command;
 
 typedef struct __attribute__((packed)) {
     uint8_t length;
@@ -54,12 +53,8 @@ bool commands_init(QueueHandle_t output_queue)
 union ibus_rec received_frame;
 void commands_task(void* params)
 {
-    uint8_t data_buffer[FRAME_BUFF_LEN];
     uint8_t index = 0;
-    ring_buffer frame_buffer;
     BaseType_t ret;
-
-    ring_buffer_init(&frame_buffer, data_buffer, FRAME_BUFF_LEN, sizeof(uint8_t));
 
     command_hover_mode_t command;
     BaseType_t rslt;
@@ -74,19 +69,19 @@ void commands_task(void* params)
                 //if(received_frame.fields.payload[5] > 1500)  // channel 6 arms motors
                 //{
                     command.alt = (float) (received_frame.fields.payload[2] - 1000) / 2.0f;
-                    command.timeout = false;
-                    xQueueSendToFront(output_queue_local, &command, 100);
+                    command.status = COMMANDS_OK;
                 //}else
                 //{
                     //command.timeout = true;  // controller decides what to do with comm timeout
                     //xQueueSendToFront(output_queue_local, &command, 100);
                 //}
+            }else{
+                command.status = COMMANDS_ERROR;
             }
         }else{
-            // comm timeout handling
-            command.timeout = true;  // controller decides what to do with comm timeout
-            xQueueSendToFront(output_queue_local, &command, 100);
+            command.status = COMMANDS_TIMEOUT;
         }
+        xQueueSendToFront(output_queue_local, &command, 100);
     }
 }
 

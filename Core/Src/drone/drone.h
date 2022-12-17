@@ -15,6 +15,6 @@ extern QueueHandle_t imu_queue;
 extern QueueHandle_t motors_queue;
 extern QueueHandle_t commands_queue;
 
-bool droneInit();
+bool drone_init();
 
 #endif //DRONE_CONTROLLER_FW_DRONE_H

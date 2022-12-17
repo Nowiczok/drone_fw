@@ -69,7 +69,7 @@ void controller_task(void* params)
         xQueueReceive(commands_queue_local, &command, 1);
         xQueueReceive(act_data_queue_local, &act_data_message, 10);
 
-        if(!command.timeout)
+        if(!command.status == COMMANDS_TIMEOUT)
         {
             //motors_message.rollSpeed =  pid(&pid_roll, delta_tim_s, act_data_message.roll, 0);
             //motors_message.pitchSpeed =  pid(&pid_pitch, delta_tim_s, act_data_message.pitch, 0);

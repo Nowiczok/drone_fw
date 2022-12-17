@@ -55,7 +55,7 @@ void imu_task(void* parameters);
 static bool calculate_accum(float sample, ring_buffer *buffer, accum_params_t *accum_params);
 static void get_calib_data(imu_basic_calib_data_t* data);
 
-bool imu_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c)
+bool imu_init(QueueHandle_t output_queue, void *hi2c)
 {
     i2c_handle_ptr = hi2c;
     output_queue_local = output_queue;
@@ -102,7 +102,7 @@ void imu_task(void* parameters)
         prev_tim_s = curr_tim_s;
 
         // get data from accel and gyro
-        mpu_stat = MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, delta_tim_s);
+        mpu_stat = MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status);
         if(mpu_stat == MPU_6050_OK) {
             calculate_accum((mpu6050_status.Gz - GYRO_BIAS_Z) * delta_tim_s, &buffer_yaw,
                             &accum_yaw);  // accumulate yaw value
@@ -135,7 +135,7 @@ void get_calib_data(imu_basic_calib_data_t* data)
     uint16_t num_of_samples = 5000;
     for(uint16_t i = 1; i <= num_of_samples; i++)
     {
-        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, 0);
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status);
         update_mean(&data->mean_acc_x, mpu6050_status.Ax, i);
         update_mean(&data->mean_acc_y, mpu6050_status.Ay, i);
         update_mean(&data->mean_acc_z, mpu6050_status.Az, i);
@@ -143,7 +143,7 @@ void get_calib_data(imu_basic_calib_data_t* data)
 
     for(uint16_t i = 1; i <= num_of_samples; i++)
     {
-        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, 0);
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status);
         update_variance(&data->var_acc_x, data->mean_acc_x, mpu6050_status.Ax, i);
         update_variance(&data->var_acc_y, data->mean_acc_y, mpu6050_status.Ay, i);
         update_variance(&data->var_acc_z, data->mean_acc_z, mpu6050_status.Az, i);
@@ -151,7 +151,7 @@ void get_calib_data(imu_basic_calib_data_t* data)
 
     for(uint16_t i = 1; i <= num_of_samples; i++)
     {
-        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, 0);
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status);
         update_mean(&data->mean_gyro_x, mpu6050_status.Gx, i);
         update_mean(&data->mean_gyro_y, mpu6050_status.Gy, i);
         update_mean(&data->mean_gyro_z, mpu6050_status.Gz, i);
@@ -159,7 +159,7 @@ void get_calib_data(imu_basic_calib_data_t* data)
 
     for(uint16_t i = 1; i <= num_of_samples; i++)
     {
-        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status, 0);
+        MPU6050_Read_All(i2c_handle_ptr, &mpu6050_status);
         update_variance(&data->var_gyro_x, data->mean_gyro_x, mpu6050_status.Gx, i);
         update_variance(&data->var_gyro_y, data->mean_gyro_y, mpu6050_status.Gy, i);
         update_variance(&data->var_gyro_z, data->mean_gyro_z, mpu6050_status.Gz, i);

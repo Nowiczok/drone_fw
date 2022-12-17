@@ -33,6 +33,8 @@ static void curr_meas_task(void* params)
     uint32_t curr_tim;
     uint32_t prev_tim = 0;
     float delta_tim_s;
+
+    WrapperRTOS_ADC_init(hadc_local, hopamp_local);
     while(1)
     {
         Wrapper_RTOS_status_t adc_res = WrapperRTOS_ADC_read_blocking(hadc_local, &raw, 100);
