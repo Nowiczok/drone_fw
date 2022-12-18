@@ -33,4 +33,7 @@ Wrapper_RTOS_status_t WrapperRTOS_ADC_read_blocking(void* hadc, uint16_t* data, 
 uint32_t WrapperRTOS_read_t_10us();
 uint32_t WrapperRTOS_read_t_1ms();
 uint32_t calculate_delta_t(uint32_t curr, uint32_t prev);
+
+Wrapper_RTOS_status_t WrapperRTOS_quad_PWM_start(void *hpwm);
+void Wrapper_RTOS_quad_PWM_set(void* hpwm, const float *duty);
 #endif //DRONE_CONTROLLER_FW_HAL_WRAPPERS_H

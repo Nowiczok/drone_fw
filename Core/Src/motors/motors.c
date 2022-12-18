@@ -2,12 +2,13 @@
 // Created by Michał on 27.10.2022.
 //
 #include "motors.h"
+#include "hal_wrappers.h"
 
 #define PWM_DUTY_OFFSET 500
 
 static xQueueHandle input_queue_local;
 static xQueueHandle output_queue_local;
-TIM_HandleTypeDef* pwm_timer_handle_ptr;
+void* pwm_timer_handle_ptr;
 
 void motors_task(void* parameters);
 void control_motors(motorsMessage_t input_message);
@@ -20,7 +21,7 @@ static float pwm_torque_translation(float pwm, const float *reference_pwms, cons
 //       |
 // 3------------4
 
-void motors_init(QueueHandle_t input_queue, QueueHandle_t output_queue, TIM_HandleTypeDef *htim)
+void motors_init(QueueHandle_t input_queue, QueueHandle_t output_queue, void *htim)
 {
     pwm_timer_handle_ptr = htim;
     input_queue_local = input_queue;
@@ -43,11 +44,7 @@ void motors_task(void* parameters)
     input_message.rollSpeed = 0;
 
     //init timer that generates PWM
-    HAL_TIM_Base_Start(pwm_timer_handle_ptr);
-    HAL_TIM_PWM_Start(pwm_timer_handle_ptr, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(pwm_timer_handle_ptr, TIM_CHANNEL_2);
-    HAL_TIM_PWM_Start(pwm_timer_handle_ptr, TIM_CHANNEL_3);
-    HAL_TIM_PWM_Start(pwm_timer_handle_ptr, TIM_CHANNEL_4);
+    WrapperRTOS_quad_PWM_start(pwm_timer_handle_ptr);
 
     vTaskDelay(5000);
 
@@ -87,11 +84,12 @@ void control_motors(motorsMessage_t input_message)
     //pwm_vals[2] += input_message.yawSpeed;
     //pwm_vals[3] -= input_message.yawSpeed;
 
+    pwm_vals[0] += PWM_DUTY_OFFSET + 191;
+    pwm_vals[1] += PWM_DUTY_OFFSET + 150;
+    pwm_vals[2] += PWM_DUTY_OFFSET + 156;
+    pwm_vals[3] += PWM_DUTY_OFFSET + 161;
 
-    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_1, pwm_vals[0] + PWM_DUTY_OFFSET + 191);  // 201
-    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_2, pwm_vals[1] + PWM_DUTY_OFFSET + 150);  // 168
-    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_3, pwm_vals[2] + PWM_DUTY_OFFSET + 156);  // 166
-    __HAL_TIM_SET_COMPARE(pwm_timer_handle_ptr, TIM_CHANNEL_4, pwm_vals[3] + PWM_DUTY_OFFSET + 161);  //171
+    Wrapper_RTOS_quad_PWM_set(pwm_timer_handle_ptr, pwm_vals);
 }
 
 static float line_approximation(float x, const float *reference_x, const float *reference_y, uint8_t num_of_ref_pairs)

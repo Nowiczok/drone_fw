@@ -56,12 +56,12 @@ const double Accel_Z_corrector = 14418.0;
 
 uint32_t timer;
 
-Kalman_no_control_commons_t KalmanX = {
+Kalman_commons_nc_t KalmanX = {
     .Q_angle = 0.001f,
     .Q_bias = 0.003f,
     .R_measure = 0.03f};
 
-Kalman_no_control_commons_t KalmanY = {
+Kalman_commons_nc_t KalmanY = {
     .Q_angle = 0.001f,
     .Q_bias = 0.003f,
     .R_measure = 0.03f,

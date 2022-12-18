@@ -5,7 +5,7 @@
 #include "kalman_filter.h"
 #include "linear_algebra.h"
 
-bool kalman_3D_no_control_alg(const Kalman_no_control_commons_t *comm_part, Kalman_no_control_variables_t *var_part)
+bool kalman_3D_no_control_alg_ref(const Kalman_commons_nc_t *comm_part, Kalman_variables_nc_t *var_part)
 {
     bool result = false;
     if(comm_part != NULL && var_part != NULL)
@@ -86,7 +86,7 @@ bool kalman_3D_no_control_alg(const Kalman_no_control_commons_t *comm_part, Kalm
     return result;
 }
 
-bool kalman_3D_control_alg(const Kalman_control_commons_t *comm_part, Kalman_control_variables_t *var_part)
+bool kalman_3D_control_alg_ref(const Kalman_commons_c_t *comm_part, Kalman_variables_c_t *var_part)
 {
     bool result = false;
     if(comm_part != NULL && var_part != NULL)
@@ -132,7 +132,7 @@ bool kalman_3D_control_alg(const Kalman_control_commons_t *comm_part, Kalman_con
         mul((float*)var_part->K, &aux, false,  // K * (Z-H*X), stored in aux21, aux
             (float*)aux21, 2, 1, 1);
         add((float*)aux21, (float*)var_part->X, (float*)aux21_2, 2, 1, 1);
-        memcpy((float*)var_part->X, (float*)aux21_2, 3*sizeof(float));  // X + [K*(Z-H*X)], stored in aux21_2, then copied to X
+        memcpy((float*)var_part->X, (float*)aux21_2, 2*sizeof(float));  // X + [K*(Z-H*X)], stored in aux21_2, then copied to X
 
         // estimate uncertainty update
         float K_t[3][2];
@@ -163,9 +163,3 @@ bool kalman_3D_control_alg(const Kalman_control_commons_t *comm_part, Kalman_con
     return result;
 }
 
-/*bool kalman_3D_control_alg_bis(const Kalman_control_commons_t *comm_part, Kalman_control_variables_t *var_part)
-{
-
-}*/
-
-//void

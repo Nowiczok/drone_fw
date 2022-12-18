@@ -46,7 +46,7 @@ bool telemetry_init(QueueHandle_t tel_queue, UART_HandleTypeDef *huart)
     return result;
 }
 
-static void telemetry_task(void* params)
+void telemetry_task(void* params)
 {
     union ibus_frame tel_message;
     tel_message.fields.protocol_length = sizeof(union ibus_frame);

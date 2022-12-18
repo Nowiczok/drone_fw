@@ -8,7 +8,6 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
-#include "stm32g4xx_hal.h"
 
 #define MOTOR_NUM 4
 
@@ -19,6 +18,6 @@ typedef struct{
     float yawSpeed;
 } motorsMessage_t;
 
-void motors_init(QueueHandle_t input_queue, QueueHandle_t output_queue, TIM_HandleTypeDef *htim);
+void motors_init(QueueHandle_t input_queue, QueueHandle_t output_queue, void *htim);
 
 #endif //DRONE_CONTROLLER_FW_MOTORS_H

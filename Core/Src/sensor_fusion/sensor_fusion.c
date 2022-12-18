@@ -8,6 +8,8 @@
 #include "hal_wrappers.h"
 #include "misc_utils.h"
 #include "kalman_filter.h"
+#include "kalman_3d_c.h"
+#include "kalman_3d_nc.h"
 #include <math.h>
 #include <string.h>
 
@@ -18,12 +20,17 @@ static QueueHandle_t baro_queue_local;
 static QueueHandle_t magnetometer_queue_local;
 static QueueHandle_t output_queue_local;
 
-static Kalman_no_control_commons_t comm_part_angles;
-static Kalman_control_commons_t comm_part_alt;
-static Kalman_no_control_variables_t variable_part_roll;
-static Kalman_no_control_variables_t variable_part_pitch;
-static Kalman_no_control_variables_t variable_part_yaw;
-static Kalman_control_variables_t variable_part_alt;
+static Kalman_commons_nc_t comm_part_angles;
+static Kalman_commons_c_t comm_part_alt;
+
+static Kalman_variables_nc_t variable_part_roll;
+static Kalman_variables_nc_t variable_part_pitch;
+static Kalman_variables_c_t variable_part_alt;
+
+static Kalman_variables_nc_t variable_part_roll_ref;
+static Kalman_variables_nc_t variable_part_pitch_ref;
+static Kalman_variables_c_t variable_part_alt_ref;
+
 static fused_data_t output_data;
 
 // private functions
@@ -54,11 +61,8 @@ void sensor_fusion_task(void* params)
 {
     imuMessage_t imu_data;
     baro_message_t baro_message;
-    kalman_angles_init(0.017f, 0.02f, 0.05f);
-    kalman_alt_init(0.1f, 0.02f, 0.05f);
-    uint32_t prev_time = 0;
-    uint32_t curr_time = 0;
-    float delta_t_s = 0.0f;
+    BaseType_t imu_queue_rec_rslt;
+    BaseType_t baro_queue_rec_rslt;
 
     sens_fus_var_t var_acc = {0};
     sens_fus_var_t no_fus_var_alt = {0};
@@ -66,57 +70,63 @@ void sensor_fusion_task(void* params)
     sens_fus_var_t no_fus_var_roll = {0};
     sens_fus_var_t fus_var_roll = {0};
 
-    volatile uint32_t curr_time_ref = 0;
-    volatile uint32_t prev_time_ref = 0;
-    volatile float delta_time_ref = 0;
+    uint32_t curr_time_ref = 0;
+    uint32_t prev_time_ref = 0;
+    float delta_t_s = 0.0f;
 
-    volatile uint32_t start;
-    volatile uint32_t stop;
-    volatile uint32_t delta;
+    kalman_angles_init(0.017f, 0.02f, 0.05f);
+    kalman_alt_init(0.1f, 0.02f, 0.05f);
 
     while(1)
     {
-        BaseType_t queue_rec_rslt = pdTRUE;
-        queue_rec_rslt &= xQueueReceive(imu_queue_local, &imu_data, 10);
-        queue_rec_rslt &= xQueueReceive(baro_queue_local, &baro_message, 10);
-        if(queue_rec_rslt == pdTRUE) // proceed only if sensors provided data
-        {
-            curr_time = WrapperRTOS_read_t_10us();
-            delta_t_s = (float)(curr_time - prev_time)/10e5f;
-            prev_time = curr_time;
+        imu_queue_rec_rslt = xQueueReceive(imu_queue_local, &imu_data, 10);
+        baro_queue_rec_rslt = xQueueReceive(baro_queue_local, &baro_message, 10);
 
-            curr_time_ref = HAL_GetTick();
-            delta_time_ref = (float)(curr_time_ref - prev_time_ref)/1000.0f;
-            prev_time_ref = curr_time_ref;
+        if(imu_queue_rec_rslt == pdTRUE && baro_queue_rec_rslt){ // proceed only if sensors provided data on time
+            if(imu_data.status == IMU_OK && baro_message.status == BARO_OK) {
+                curr_time_ref = HAL_GetTick();
+                delta_t_s = (float) (curr_time_ref - prev_time_ref) / 1000.0f;
+                prev_time_ref = curr_time_ref;
 
-            //!!!!!!!!!!!!!!!!!!!!!!!!!
-            delta_t_s = (float)delta_time_ref;
+                // calculate roll and pitch from accelerometer data
+                float roll = atan2f(imu_data.acc_y, imu_data.acc_z) * RAD_TO_DEG;
+                float pitch = atan2f(imu_data.acc_x, imu_data.acc_z) * RAD_TO_DEG;
+                float yaw_accum = imu_data.yaw_accum;
 
-            float roll = atan2f(imu_data.acc_y, imu_data.acc_z) * RAD_TO_DEG;
-            float pitch = atan2f(imu_data.acc_x, imu_data.acc_z) * RAD_TO_DEG;
-            float yaw_accum = imu_data.yaw_accum;
-            // enter measurements
-            variable_part_pitch.Z[0][0] = pitch;
-            variable_part_pitch.Z[1][0] = -imu_data.gyro_y;  // TODO: check whether it really should be gyro_x
-            variable_part_roll.Z[0][0] = roll;
-            variable_part_roll.Z[1][0] = imu_data.gyro_x;  // TODO: check whether it really should be gyro_y
-            variable_part_alt.Z = baro_message.alt;
-            float acc_raw = sqrtf(powf(imu_data.acc_x, 2) + powf(imu_data.acc_y, 2) + powf(imu_data.acc_z, 2));;
-            variable_part_alt.a = acc_raw - 1.1342f;
-            kalman_angles(delta_t_s);
-            kalman_alt(delta_t_s);
-            output_data.roll = variable_part_roll.X[0][0];
-            output_data.pitch = variable_part_pitch.X[0][0];
-            output_data.yaw = yaw_accum;
-            output_data.alt = variable_part_alt.X[0][0];
+                // enter measurements
+                variable_part_pitch.Z[0][0] = pitch;
+                variable_part_pitch.Z[1][0] = -imu_data.gyro_y;
 
-            calculate_vars(&var_acc, variable_part_alt.a, 3000);
-            calculate_vars(&no_fus_var_alt, baro_message.alt, 3000);
-            calculate_vars(&fus_var_alt, output_data.alt, 3000);
-            calculate_vars(&no_fus_var_roll, roll, 3000);
-            calculate_vars(&fus_var_roll, output_data.roll, 3000);
-            xQueueSendToFront(output_queue_local, &output_data, 1);
+                variable_part_roll.Z[0][0] = roll;
+                variable_part_roll.Z[1][0] = imu_data.gyro_x;
+
+                variable_part_alt.Z = baro_message.alt;
+
+                //reference, for debug only
+                variable_part_pitch_ref.Z[0][0] = pitch;
+                variable_part_pitch_ref.Z[1][0] = -imu_data.gyro_y;
+                variable_part_roll_ref.Z[0][0] = roll;
+                variable_part_roll_ref.Z[1][0] = imu_data.gyro_x;
+                variable_part_alt_ref.Z = baro_message.alt;
+
+                float acc_raw = sqrtf(powf(imu_data.acc_x, 2) + powf(imu_data.acc_y, 2) + powf(imu_data.acc_z, 2));;
+                variable_part_alt.a = acc_raw - 1.1342f;
+
+                kalman_angles(delta_t_s);
+                kalman_alt(delta_t_s);
+
+                output_data.roll = variable_part_roll.X[0][0];
+                output_data.pitch = variable_part_pitch.X[0][0];
+                output_data.yaw = yaw_accum;
+                output_data.alt = variable_part_alt.X[0][0];
+                output_data.status = SENS_FUS_OK;
+            } else{
+                output_data.status = SENS_FUS_DATA_ERROR;
+            }
+        }else{
+            output_data.status = SENS_FUS_NO_DATA;
         }
+        xQueueSendToFront(output_queue_local, &output_data, 1);
     }
 }
 
@@ -185,8 +195,11 @@ bool kalman_angles(float delta_t)
     comm_part_angles.Q[2][1] = delta_t * acc_var;
     comm_part_angles.Q[2][2] = acc_var;
 
-    kalman_3D_no_control_alg(&comm_part_angles, &variable_part_roll);
-    kalman_3D_no_control_alg(&comm_part_angles, &variable_part_pitch);
+    kalman_3D_no_control_alg_ref(&comm_part_angles, &variable_part_roll_ref);
+    kalman_3D_no_control_alg_ref(&comm_part_angles, &variable_part_pitch_ref);
+
+    kalman_3D_alg_nc(&comm_part_angles, &variable_part_roll);
+    kalman_3D_alg_nc(&comm_part_angles, &variable_part_pitch);
 }
 
 void kalman_alt_init(float alt_var, float vel_var, float acc_var)
@@ -225,6 +238,7 @@ bool kalman_alt(float delta_t)
     comm_part_alt.Q[0][0] = 0.25f * acc_std_dev * powf(delta_t, 4); comm_part_alt.Q[0][1] = 0.5f * acc_std_dev * powf(delta_t, 3);
     comm_part_alt.Q[1][0] = 0.5f * acc_std_dev * powf(delta_t, 3);  comm_part_alt.Q[1][1] = acc_std_dev * powf(delta_t, 2);
 
-    kalman_3D_control_alg(&comm_part_alt, &variable_part_alt);
+    kalman_3D_control_alg_ref(&comm_part_alt, &variable_part_alt_ref);
+    kalman_3D_alg_c(&comm_part_alt, &variable_part_alt);
 }
 

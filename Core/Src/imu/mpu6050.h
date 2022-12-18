@@ -51,7 +51,7 @@ typedef struct
     float angle;
     float bias;
     float P[2][2];
-} Kalman_no_control_commons_t;
+} Kalman_commons_nc_t;
 
 mpu6050_status_t MPU6050_Init(void *I2Cx);
 
@@ -63,4 +63,4 @@ void MPU6050_Read_Temp(I2C_HandleTypeDef *I2Cx, MPU6050_t *DataStruct);*/
 
 mpu6050_status_t MPU6050_Read_All(void *I2Cx, MPU6050_t *DataStruct);
 
-double Kalman_getAngle(Kalman_no_control_commons_t *Kalman, double newAngle, double newRate, double dt);
+double Kalman_getAngle(Kalman_commons_nc_t *Kalman, double newAngle, double newRate, double dt);

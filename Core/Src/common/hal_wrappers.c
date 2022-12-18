@@ -164,3 +164,19 @@ Wrapper_RTOS_status_t WrapperRTOS_ADC_read_blocking(void* hadc, uint16_t* data, 
     }
     return out_res;
 }
+
+Wrapper_RTOS_status_t WrapperRTOS_quad_PWM_start(void *hpwm) {
+    HAL_TIM_Base_Start(hpwm);
+    HAL_TIM_PWM_Start(hpwm, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Start(hpwm, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(hpwm, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Start(hpwm, TIM_CHANNEL_4);
+}
+
+void Wrapper_RTOS_quad_PWM_set(void* hpwm, const float *duty){
+    TIM_HandleTypeDef* pwm_handle = hpwm;
+    __HAL_TIM_SET_COMPARE(pwm_handle, TIM_CHANNEL_1, duty[0]);
+    __HAL_TIM_SET_COMPARE(pwm_handle, TIM_CHANNEL_2, duty[1]);
+    __HAL_TIM_SET_COMPARE(pwm_handle, TIM_CHANNEL_3, duty[2]);
+    __HAL_TIM_SET_COMPARE(pwm_handle, TIM_CHANNEL_4, duty[3]);
+}
