@@ -81,14 +81,15 @@ void sensor_fusion_task(void* params)
 
     while(1)
     {
+        curr_time_ref = HAL_GetTick();
+        delta_t_s = (float) (curr_time_ref - prev_time_ref) / 1000.0f;
+        prev_time_ref = curr_time_ref;
+
         imu_queue_rec_rslt = xQueueReceive(imu_queue_local, &imu_data, 1);
         baro_queue_rec_rslt = xQueueReceive(baro_queue_local, &baro_message, 1);
 
-        if(imu_queue_rec_rslt == pdTRUE && baro_queue_rec_rslt){ // proceed only if sensors provided data on time
-            if(imu_data.status == IMU_OK && baro_message.status == BARO_OK) {
-                curr_time_ref = HAL_GetTick();
-                delta_t_s = (float) (curr_time_ref - prev_time_ref) / 1000.0f;
-                prev_time_ref = curr_time_ref;
+        if(imu_queue_rec_rslt == pdTRUE){ // proceed only if imu provided data on time
+            if(imu_data.status == IMU_OK) {
 
                 // calculate roll and pitch from accelerometer data
                 float roll = atan2f(imu_data.acc_y, imu_data.acc_z) * RAD_TO_DEG;
@@ -102,51 +103,37 @@ void sensor_fusion_task(void* params)
                 variable_part_roll.Z[0][0] = roll;
                 variable_part_roll.Z[1][0] = imu_data.gyro_x;
 
-                variable_part_alt.Z = baro_message.alt;
-
-                //reference, for debug only
-                variable_part_pitch_ref.Z[0][0] = pitch;
-                variable_part_pitch_ref.Z[1][0] = -imu_data.gyro_y;
-                variable_part_roll_ref.Z[0][0] = roll;
-                variable_part_roll_ref.Z[1][0] = imu_data.gyro_x;
-                variable_part_alt_ref.Z = baro_message.alt;
-
-                float acc_raw = sqrtf(powf(imu_data.acc_x, 2) + powf(imu_data.acc_y, 2) + powf(imu_data.acc_z, 2));;
-                variable_part_alt.a = acc_raw - 1.1342f;
-
                 kalman_angles(delta_t_s);
-                kalman_alt(delta_t_s);
 
                 output_data.roll = variable_part_roll.X[0][0];
                 output_data.pitch = variable_part_pitch.X[0][0];
                 output_data.yaw = yaw_accum;
-                output_data.alt = variable_part_alt.X[0][0];
 
-                //calculate_vars(&var_acc, variable_part_alt.a, 3000);
-
-                //calculation of altitude variance
-                //calculate_vars(&no_fus_var_alt, baro_message.alt, 1000);
-                /*if(calculate_vars(&fus_var_alt, output_data.alt, 1000)){
-                    asm("BKPT");
-                }*/
-
-                //calculation of roll variance
-                //calculate_vars(&no_fus_var_roll, roll, 10000);
-                //calculate_vars(&fus_var_roll, output_data.roll, 10000);
-
-                // calculation of pitch variance
-                //calculate_vars(&no_fus_var_pitch, pitch, 10000);
-                /*if(calculate_vars(&fus_var_pitch, output_data.pitch, 10000)){
-                    asm("BKPT");
-                }*/
-
-                output_data.status = SENS_FUS_OK;
+                output_data.ang_status = SENS_FUS_ANG_OK;
             } else{
-                output_data.status = SENS_FUS_DATA_ERROR;
+                output_data.ang_status = SENS_FUS_ANG_DATA_ERROR;
             }
         }else{
-            output_data.status = SENS_FUS_NO_DATA;
+            output_data.ang_status = SENS_FUS_ANG_NO_DATA;
         }
+
+        if(baro_queue_rec_rslt == pdTRUE){ // proceed only if imu provided data on time
+            if(baro_message.status == BARO_OK) {
+                variable_part_alt.Z = baro_message.alt;
+
+                float acc_raw = sqrtf(powf(imu_data.acc_x, 2) + powf(imu_data.acc_y, 2) + powf(imu_data.acc_z, 2));
+                variable_part_alt.a = acc_raw - 1.1342f;
+                kalman_alt(delta_t_s);
+                output_data.alt = variable_part_alt.X[0][0];
+
+                output_data.bar_status = SENS_FUS_BAR_OK;
+            }else{
+                output_data.bar_status = SENS_FUS_BAR_DATA_ERROR;
+            }
+        }else{
+            output_data.bar_status = SENS_FUS_BAR_NO_DATA;
+        }
+
         xQueueSendToFront(output_queue_local, &output_data, 1);
     }
 }
