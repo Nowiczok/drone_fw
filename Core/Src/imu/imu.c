@@ -81,6 +81,10 @@ void imu_task(void* parameters)
     imu_basic_calib_data_t calib_data;
     mpu6050_status_t mpu_stat;
 
+    sens_fus_var_t var_Gx = {0};
+    sens_fus_var_t var_Gy = {0};
+    sens_fus_var_t var_Gz = {0};
+
     mpu_stat = MPU6050_Init(i2c_handle_ptr);
     if(mpu_stat != MPU_6050_OK){
         new_message.status = IMU_INIT_ERROR;
@@ -91,9 +95,6 @@ void imu_task(void* parameters)
     }
 
     ring_buffer_init(&buffer_yaw, yaw_buffer_mem, YAW_BUFFER_CAP, sizeof(float));
-
-    //debug only
-    //get_calib_data(&calib_data);
 
     while(1)
     {
@@ -116,6 +117,12 @@ void imu_task(void* parameters)
             new_message.gyro_z = mpu6050_status.Gz - GYRO_BIAS_Z;
 
             new_message.yaw_accum += (mpu6050_status.Gz - GYRO_BIAS_Z) * delta_tim_s;
+
+            /*calculate_vars(&var_Gx, mpu6050_status.Gx, 10000);
+            calculate_vars(&var_Gy, mpu6050_status.Gy, 10000);
+            if(calculate_vars(&var_Gz, mpu6050_status.Gz, 10000)){
+                asm("BKPT");
+            }*/
 
             new_message.status = IMU_OK;
         }else if(mpu_stat == MPU_6050_TIMEOUT){

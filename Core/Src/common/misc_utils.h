@@ -19,6 +19,6 @@ typedef struct {
 
 void update_variance(float* variance, float mean, float new_sample, uint64_t n);
 void update_mean(float* mean, float new_sample, uint64_t n);
-void calculate_vars(sens_fus_var_t *vars, float sample, uint32_t iter_num);
+bool calculate_vars(sens_fus_var_t *vars, float sample, uint32_t iter_num);
 
 #endif //DRONE_CONTROLLER_FW_MISC_UTILS_H

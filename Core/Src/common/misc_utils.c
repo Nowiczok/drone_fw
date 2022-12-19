@@ -20,18 +20,21 @@ void update_mean(float* mean, float new_sample, uint64_t n)
     }
 }
 
-void calculate_vars(sens_fus_var_t *vars, float sample, uint32_t iter_num)
+bool calculate_vars(sens_fus_var_t *vars, float sample, uint32_t iter_num)
 {
+    bool res;
     if(!vars->calc_var)
     {
         if(vars->iter_num < iter_num)
         {
             update_mean(&vars->mean, sample, vars->iter_num);
             ++vars->iter_num;
+            res = false;
         }else
         {
             vars->calc_var = true;
             vars->iter_num = 0;
+            res = false;
         }
     }else
     {
@@ -39,9 +42,11 @@ void calculate_vars(sens_fus_var_t *vars, float sample, uint32_t iter_num)
         {
             update_variance(&vars->var, vars->mean, sample, vars->iter_num);
             ++vars->iter_num;
+            res = false;
         }else
         {
-            return;
+            res = true;
         }
     }
+    return res;
 }

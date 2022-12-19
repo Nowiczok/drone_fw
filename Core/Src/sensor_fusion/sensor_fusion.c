@@ -69,18 +69,20 @@ void sensor_fusion_task(void* params)
     sens_fus_var_t fus_var_alt = {0};
     sens_fus_var_t no_fus_var_roll = {0};
     sens_fus_var_t fus_var_roll = {0};
+    sens_fus_var_t no_fus_var_pitch = {0};
+    sens_fus_var_t fus_var_pitch = {0};
 
     uint32_t curr_time_ref = 0;
     uint32_t prev_time_ref = 0;
     float delta_t_s = 0.0f;
 
     kalman_angles_init(0.017f, 0.02f, 0.05f);
-    kalman_alt_init(0.1f, 0.02f, 0.05f);
+    kalman_alt_init(0.1f, 0.02f, 0.001f);
 
     while(1)
     {
-        imu_queue_rec_rslt = xQueueReceive(imu_queue_local, &imu_data, 10);
-        baro_queue_rec_rslt = xQueueReceive(baro_queue_local, &baro_message, 10);
+        imu_queue_rec_rslt = xQueueReceive(imu_queue_local, &imu_data, 1);
+        baro_queue_rec_rslt = xQueueReceive(baro_queue_local, &baro_message, 1);
 
         if(imu_queue_rec_rslt == pdTRUE && baro_queue_rec_rslt){ // proceed only if sensors provided data on time
             if(imu_data.status == IMU_OK && baro_message.status == BARO_OK) {
@@ -119,6 +121,25 @@ void sensor_fusion_task(void* params)
                 output_data.pitch = variable_part_pitch.X[0][0];
                 output_data.yaw = yaw_accum;
                 output_data.alt = variable_part_alt.X[0][0];
+
+                //calculate_vars(&var_acc, variable_part_alt.a, 3000);
+
+                //calculation of altitude variance
+                //calculate_vars(&no_fus_var_alt, baro_message.alt, 1000);
+                /*if(calculate_vars(&fus_var_alt, output_data.alt, 1000)){
+                    asm("BKPT");
+                }*/
+
+                //calculation of roll variance
+                //calculate_vars(&no_fus_var_roll, roll, 10000);
+                //calculate_vars(&fus_var_roll, output_data.roll, 10000);
+
+                // calculation of pitch variance
+                //calculate_vars(&no_fus_var_pitch, pitch, 10000);
+                /*if(calculate_vars(&fus_var_pitch, output_data.pitch, 10000)){
+                    asm("BKPT");
+                }*/
+
                 output_data.status = SENS_FUS_OK;
             } else{
                 output_data.status = SENS_FUS_DATA_ERROR;
@@ -234,9 +255,9 @@ bool kalman_alt(float delta_t)
     comm_part_alt.G[1][0] = delta_t;
 
     // prepare Q matrix
-    float acc_std_dev = comm_part_alt.acc_var;
-    comm_part_alt.Q[0][0] = 0.25f * acc_std_dev * powf(delta_t, 4); comm_part_alt.Q[0][1] = 0.5f * acc_std_dev * powf(delta_t, 3);
-    comm_part_alt.Q[1][0] = 0.5f * acc_std_dev * powf(delta_t, 3);  comm_part_alt.Q[1][1] = acc_std_dev * powf(delta_t, 2);
+    float acc_var = comm_part_alt.acc_var;
+    comm_part_alt.Q[0][0] = 0.25f * acc_var * powf(delta_t, 4); comm_part_alt.Q[0][1] = 0.5f * acc_var * powf(delta_t, 3);
+    comm_part_alt.Q[1][0] = 0.5f * acc_var * powf(delta_t, 3); comm_part_alt.Q[1][1] = acc_var * powf(delta_t, 2);
 
     kalman_3D_control_alg_ref(&comm_part_alt, &variable_part_alt_ref);
     kalman_3D_alg_c(&comm_part_alt, &variable_part_alt);

@@ -77,9 +77,9 @@ void controller_task(void* params)
         }
         else
         {
-            motors_message.rollSpeed =  0;
-            motors_message.pitchSpeed =  0;
-            motors_message.yawSpeed =  0;
+            motors_message.rollSpeed = 0;
+            motors_message.pitchSpeed = 0;
+            motors_message.yawSpeed = 0;
             motors_message.throttle = 0;
         }
         xQueueSendToFront(motors_queue_local, &motors_message, 100);
