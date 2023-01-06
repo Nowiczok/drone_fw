@@ -8,8 +8,21 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include <stdbool.h>
-#include "stm32g4xx_hal.h"
 
-bool magnetometer_init(QueueHandle_t output_queue, I2C_HandleTypeDef *hi2c);
+typedef enum{
+    MAG_OK,
+    MAG_TIMEOUT,
+    MAG_ERROR
+}mag_status_t;
+
+typedef struct {
+    float magX;
+    float magY;
+    float magZ;
+
+    mag_status_t status;
+}mag_message_t;
+
+bool magnetometer_init(QueueHandle_t output_queue, void *hi2c);
 
 #endif //DRONE_CONTROLLER_FW_MAGNETOMETER_H

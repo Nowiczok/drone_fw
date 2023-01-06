@@ -2,8 +2,6 @@
 #ifndef DRONE_CONTROLLER_FW_MMC5983_DEFINES_H
 #define DRONE_CONTROLLER_FW_MMC5983_DEFINES_H
 
-#include "stm32g4xx_hal.h"
-
 // Registers definitions
 #define X_OUT_0_REG      0x0
 #define X_OUT_1_REG      0X01

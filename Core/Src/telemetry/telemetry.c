@@ -27,7 +27,7 @@ static QueueHandle_t act_data_queue_local;
 static void telemetry_task(void* params);
 static void ibus_checksum(uint8_t frame_bytes[sizeof(union ibus_frame)]);
 
-bool telemetry_init(QueueHandle_t tel_queue, UART_HandleTypeDef *huart)
+bool telemetry_init(QueueHandle_t tel_queue, void *huart)
 {
     bool result = false;
     if(huart != NULL)
@@ -55,14 +55,15 @@ void telemetry_task(void* params)
     while(1)
     {
         //xQueuePeek(act_data_queue_local, &imu_message, 100);
-        xQueueReceive(act_data_queue_local, &fused_data, 100);  // receive only for now, should be peek
+        xQueuePeek(act_data_queue_local, &fused_data, 100);  // receive only for now, should be peek
         tel_message.fields.roll = fused_data.roll;
         tel_message.fields.pitch = fused_data.pitch;
         tel_message.fields.yaw = fused_data.yaw;
         tel_message.fields.alt = fused_data.alt;
         ibus_checksum(tel_message.bytes);
 
-        WrapperRTOS_UART_Transmit_DMA(uart_handle_ptr, tel_message.bytes, sizeof(union ibus_frame));
+        //WrapperRTOS_UART_Transmit_DMA(uart_handle_ptr, tel_message.bytes, sizeof(union ibus_frame));
+        WrapperRTOS_UART_Transmit_IT(uart_handle_ptr, tel_message.bytes, sizeof(union ibus_frame));
         vTaskDelay(100);
     }
 }

@@ -75,19 +75,54 @@ Wrapper_RTOS_status_t WrapperRTOS_i2cMemWrite(void *hi2c, uint16_t DevAddress, u
 
 Wrapper_RTOS_status_t WrapperRTOS_UART_Receive_IT_fromISR(void *huart, uint8_t *pData, uint16_t Size)
 {
-    HAL_StatusTypeDef status = HAL_ERROR;
+    Wrapper_RTOS_status_t status;
+    HAL_StatusTypeDef hal_res;
     BaseType_t task_woken_take = pdFALSE;
     BaseType_t task_woken_give = pdFALSE;
     if(uart_mutex != NULL)  // check whether mutex is valid
     {
         if (xSemaphoreTakeFromISR(uart_mutex, &task_woken_take))
         {
-            status = HAL_UART_Receive_IT(huart, pData, Size);
+            hal_res = HAL_UART_Receive_IT(huart, pData, Size);
+            if(hal_res == HAL_OK){
+                status = WrRTOS_OK;
+            }else{
+                status = WrRTOS_ERROR;
+            }
             xSemaphoreGiveFromISR(uart_mutex, &task_woken_give);
             portYIELD_FROM_ISR(task_woken_give || task_woken_give);
+        }else{
+            status = WrRTOS_TIMEOUT;
         }
+    }else{
+        status = WrRTOS_INPUT_ERROR;
     }
     return status;
+}
+
+Wrapper_RTOS_status_t WrapperRTOS_UART_Transmit_IT(void *huart, const uint8_t *pData, uint16_t Size){
+    Wrapper_RTOS_status_t res;
+    HAL_StatusTypeDef  hal_res;
+    BaseType_t task_woken_take = pdFALSE;
+    BaseType_t task_woken_give = pdFALSE;
+
+    if(huart != NULL && pData != NULL){
+        if (xSemaphoreTakeFromISR(uart_mutex, &task_woken_take)){
+            hal_res = HAL_UART_Transmit_IT(huart, pData, Size);
+            if(hal_res == HAL_OK){
+                res = WrRTOS_OK;
+            }else{
+                res = WrRTOS_ERROR;
+            }
+            xSemaphoreGiveFromISR(uart_mutex, &task_woken_give);
+            portYIELD_FROM_ISR(task_woken_give || task_woken_give);
+        }else{
+            res = WrRTOS_TIMEOUT;
+        }
+    }else{
+        res = WrRTOS_INPUT_ERROR;
+    }
+    return res;
 }
 
 Wrapper_RTOS_status_t WrapperRTOS_UART_Transmit_DMA(void *huart, const uint8_t *pData, uint16_t Size)

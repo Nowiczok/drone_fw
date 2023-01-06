@@ -71,8 +71,8 @@ void controller_task(void* params)
 
         if(!command.status == COMMANDS_TIMEOUT)
         {
-            //motors_message.rollSpeed =  pid(&pid_roll, delta_tim_s, act_data_message.roll, 0);
-            //motors_message.pitchSpeed =  pid(&pid_pitch, delta_tim_s, act_data_message.pitch, 0);
+            motors_message.rollSpeed =  pid(&pid_roll, delta_tim_s, act_data_message.roll, 0);
+            motors_message.pitchSpeed =  pid(&pid_pitch, delta_tim_s, act_data_message.pitch, 0);
             motors_message.throttle = command.alt;
         }
         else
